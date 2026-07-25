@@ -330,6 +330,82 @@ nav a:hover {
   box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
 }
 
+.registration-success-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.registration-success-popup {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  width: min(100%, 460px);
+  padding: 30px;
+  color: #e2e8f0;
+  background: linear-gradient(145deg, #0f172a, #172554);
+  border: 2px solid #4ade80;
+  border-radius: 24px;
+  text-align: center;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+  animation: revealPlayer 0.45s cubic-bezier(.2,.9,.3,1.2);
+}
+
+.registration-success-popup > img {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  padding: 5px;
+  background: white;
+  border-radius: 50%;
+}
+
+.registration-success-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  color: white;
+  background: #16a34a;
+  border-radius: 50%;
+  font-size: 2.25rem;
+  font-weight: 900;
+  box-shadow: 0 0 0 10px rgba(34, 197, 94, 0.15);
+}
+
+.registration-success-popup h2,
+.registration-success-popup p {
+  margin: 0;
+}
+
+.registration-upload-confirmations {
+  display: grid;
+  gap: 7px;
+  color: #bbf7d0;
+  font-weight: 800;
+}
+
+.registration-approval-note {
+  color: #bfdbfe;
+}
+
+.registration-success-popup button {
+  width: 100%;
+  padding: 12px 18px;
+  color: white;
+  background: linear-gradient(135deg, #16a34a, #2563eb);
+  border: 0;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 .registered-players-section {
   margin-top: 24px;
   display: grid;
@@ -2347,6 +2423,106 @@ button {
 }
 
 @media (max-width: 600px) {
+  .registration-page {
+    width: 100%;
+    margin: 0;
+  }
+
+  .registration-heading {
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .registration-logo {
+    width: 68px;
+    height: 68px;
+    flex-basis: 68px;
+    border-radius: 14px;
+  }
+
+  .registration-heading h2 {
+    margin: 5px 0;
+    font-size: 1.35rem;
+  }
+
+  .registration-heading p {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  .registration-form {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 14px;
+  }
+
+  .registration-form .full-field {
+    grid-column: auto;
+  }
+
+  .registration-form input,
+  .registration-form textarea,
+  .registration-form select,
+  .registration-form button {
+    width: 100%;
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  .role-fieldset {
+    padding: 11px;
+  }
+
+  .role-options {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .role-chip {
+    width: 100%;
+    min-height: 44px;
+    flex-direction: row !important;
+  }
+
+  .role-chip input {
+    width: 20px;
+    min-height: 20px;
+    flex: 0 0 20px;
+  }
+
+  .registration-upload-field {
+    padding: 12px;
+    background: rgba(30, 41, 59, 0.72);
+    border: 1px solid #475569;
+    border-radius: 12px;
+  }
+
+  .registration-success-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .registration-success-popup {
+    width: 100%;
+    max-height: calc(100dvh - 24px);
+    padding: 24px 18px;
+    overflow-y: auto;
+    border-radius: 22px;
+  }
+
+  .registration-success-popup > img {
+    width: 64px;
+    height: 64px;
+  }
+
+  .registration-success-icon {
+    width: 54px;
+    height: 54px;
+    font-size: 1.8rem;
+  }
+
   .event-cover {
     height: 420px;
   }
