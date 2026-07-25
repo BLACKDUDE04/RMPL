@@ -146,7 +146,7 @@ function WelcomeVideoPage({ settings, refreshData }) {
     <div className="page-heading"><div><span className="eyebrow">WELCOME MEDIA</span><h2>Welcome Video</h2><p>Upload and preview the video used to welcome auction viewers.</p></div><Link className="back-link" to="/">Back to auction</Link></div>
     <div className="welcome-video-layout">
       <section className="welcome-video-preview">
-        {videoPreview ? <video src={videoPreview} controls playsInline /> : <div><strong>No welcome video uploaded</strong><span>Select a video file to preview it here.</span></div>}
+        {videoPreview ? <video src={resolveAssetUrl(videoPreview)} controls playsInline /> : <div><strong>No welcome video uploaded</strong><span>Select a video file to preview it here.</span></div>}
       </section>
       <form className="welcome-video-form" onSubmit={saveVideo}>
         <label>Choose Welcome Video
@@ -191,9 +191,9 @@ function TestimonialsPage() {
     {feedback ? <p className="feedback">{feedback}</p> : null}
     <div className="testimonials-grid">{items.map((item) => <article className={`testimonial-card ${item.highlighted ? 'highlighted' : ''}`} key={item._id}>
       {item.highlighted ? <span className="highlight-ribbon">★ HIGHLIGHT</span> : null}
-      {item.images?.[0] ? <img className="event-cover" src={item.images[0]} alt={item.title} /> : null}
+      {item.images?.[0] ? <img className="event-cover" src={resolveAssetUrl(item.images[0])} alt={item.title} /> : null}
       <div className="testimonial-content"><span>{formatEventDate(item.eventDate)}</span><h3>{item.title}</h3><p>{item.description}</p>
-        {item.images?.length > 1 ? <div className="event-gallery">{item.images.slice(1).map((image, index) => <img src={image} alt={`${item.title} ${index + 2}`} key={image} />)}</div> : null}
+        {item.images?.length > 1 ? <div className="event-gallery">{item.images.slice(1).map((image, index) => <img src={resolveAssetUrl(image)} alt={`${item.title} ${index + 2}`} key={image} />)}</div> : null}
         {item.winnerName || item.winnerImage ? <div className="previous-winner">{item.winnerImage ? <img src={item.winnerImage} alt={item.winnerName} /> : null}<div><small>PREVIOUS WINNER</small><strong>{item.winnerName || 'Winner'}</strong></div></div> : null}
         <button className="danger-button" onClick={() => removeItem(item)}>Delete</button>
       </div>
@@ -283,7 +283,7 @@ function TeamsPage({ teams, refreshData }) {
       <div className="teams-grid">
         {teams.map((team) => (
           <article className="team-card" key={team._id}>
-            {team.logo ? <img src={team.logo} alt={team.name} /> : <div className="team-logo-fallback">{team.name.charAt(0)}</div>}
+            {team.logo ? <img src={resolveAssetUrl(team.logo)} alt={team.name} /> : <div className="team-logo-fallback">{team.name.charAt(0)}</div>}
             <h3>{team.name}</h3>
             <p>Purse: {Number(team.purse || 0).toLocaleString()} Points</p>
             <p>Remaining: {Number(team.remainingPurse || 0).toLocaleString()} Points</p>
@@ -311,7 +311,7 @@ function PurseValuePage({ teams }) {
           <Link className="purse-card-link" to={`/teams/${team._id}`} key={team._id} aria-label={`View ${team.name} team`}>
           <article className="purse-card">
             <div className="purse-team-heading">
-              {team.logo ? <img src={team.logo} alt={team.name} /> : <div className="small-team-logo">{team.name.charAt(0)}</div>}
+              {team.logo ? <img src={resolveAssetUrl(team.logo)} alt={team.name} /> : <div className="small-team-logo">{team.name.charAt(0)}</div>}
               <div><h3>{team.name}</h3><span>{team.playerCount || 0} players bought</span></div>
             </div>
             <div className="purse-numbers">
@@ -427,7 +427,7 @@ function SelectedPlayersPage({ refreshCategories, teams }) {
       {Object.entries(groupedPlayers).map(([teamId, group]) => (
         <section className="sold-team-section" key={teamId}>
           <div className="sold-team-heading">
-            {group.logo ? <img src={group.logo} alt={group.label} /> : <div className="small-team-logo">{group.label.charAt(0)}</div>}
+            {group.logo ? <img src={resolveAssetUrl(group.logo)} alt={group.label} /> : <div className="small-team-logo">{group.label.charAt(0)}</div>}
             <div><h3>{group.label}</h3><span>{group.players.length} players bought</span></div>
           </div>
           <div className="selected-players-grid">
@@ -709,7 +709,7 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
       {currentPlayer ? (
         <div className="player-modal-backdrop" role="dialog" aria-modal="true" aria-label={`Selected player ${currentPlayer.name}`}>
           <section className="panel selected-player-card player-reveal">
-            {auctionLogo ? <img className="auction-card-logo" src={auctionLogo} alt="RMPL logo" /> : null}
+            {auctionLogo ? <img className="auction-card-logo" src={resolveAssetUrl(auctionLogo)} alt="RMPL logo" /> : null}
             <button className="modal-close" type="button" onClick={closePlayerCard} aria-label="Close player card">×</button>
             {!mvpMode ? <div className="selected-number-badge">#{selectedNumber}</div> : null}
             <div className="player-image-wrap">
@@ -1096,14 +1096,14 @@ function App() {
   };
 
   return (
-    <div className="app-shell" style={{ backgroundImage: settings.backgroundImage ? `url(${settings.backgroundImage})` : 'none' }}>
+    <div className="app-shell" style={{ backgroundImage: settings.backgroundImage ? `url(${resolveAssetUrl(settings.backgroundImage)})` : 'none' }}>
       {routeLoading ? (
         <div className="rmpl-loader" role="status" aria-live="polite" aria-label="Loading RMPL">
           <div className="rmpl-spinner">
             {settings.logo ? (
               <div className="rmpl-logo-3d">
-                <img className="front" src={settings.logo} alt="RMPL logo" />
-                <img className="back" src={settings.logo} alt="" aria-hidden="true" />
+                <img className="front" src={resolveAssetUrl(settings.logo)} alt="RMPL logo" />
+                <img className="back" src={resolveAssetUrl(settings.logo)} alt="" aria-hidden="true" />
               </div>
             ) : <span>RMPL</span>}
           </div>
@@ -1112,7 +1112,7 @@ function App() {
       ) : null}
       {!isStandaloneRegistrationRoute ? <header className="topbar">
         <div className="brand">
-          {settings.logo ? <img src={settings.logo} alt="logo" className="logo" /> : null}
+          {settings.logo ? <img src={resolveAssetUrl(settings.logo)} alt="logo" className="logo" /> : null}
           <div>
             <h1>RMPL Auction</h1>
             <p>Raipur Malayalee Premier Leagure</p>
@@ -1151,7 +1151,7 @@ function App() {
                   <Link key={item.key} to={item.key === 'mvp' ? '/mvp' : `/category/${item.key}`} className={`cat-card ${item.key === 'mvp' ? 'mvp-category-card' : ''}`} onClick={() => setSelectedCategory(item.key)}>
                     <div className="category-image-wrap">
                       {settings.categoryImages?.[item.key] || item.players?.[0]?.image
-                        ? <img src={settings.categoryImages?.[item.key] || item.players[0].image} alt={`${item.label} category`} />
+                        ? <img src={resolveAssetUrl(settings.categoryImages?.[item.key] || item.players[0].image)} alt={`${item.label} category`} />
                         : <div className="category-image-placeholder">{item.label.charAt(0)}</div>}
                     </div>
                     <div className="category-card-content">
@@ -1200,20 +1200,20 @@ function App() {
                 <div className="settings-section-heading"><span>01</span><div><h3>Branding</h3><p>Images used across the complete auction dashboard.</p></div></div>
                 <div className="settings-fields-grid">
                   <label>Background Image<input type="file" name="backgroundImage" accept="image/*" /></label>
-                  <label>Dashboard Logo{settings.logo ? <img className="settings-logo-preview" src={settings.logo} alt="Current dashboard logo" /> : null}<input type="file" name="logo" accept="image/*" /></label>
+                  <label>Dashboard Logo{settings.logo ? <img className="settings-logo-preview" src={resolveAssetUrl(settings.logo)} alt="Current dashboard logo" /> : null}<input type="file" name="logo" accept="image/*" /></label>
                 </div>
               </section>
               <section className="settings-section">
                 <div className="settings-section-heading"><span>02</span><div><h3>Auction Sounds</h3><p>Preview and replace sounds used during auction events.</p></div></div>
                 <div className="settings-fields-grid">
-                  <label>Auction Start Sound<input type="file" name="auctionStartAudio" accept="audio/*" />{settings.auctionStartAudio ? <audio className="audio-preview" src={settings.auctionStartAudio} controls /> : null}</label>
-                  <label>Player Sold Sound<input type="file" name="playerSoldAudio" accept="audio/*" />{settings.playerSoldAudio ? <audio className="audio-preview" src={settings.playerSoldAudio} controls /> : null}</label>
+                  <label>Auction Start Sound<input type="file" name="auctionStartAudio" accept="audio/*" />{settings.auctionStartAudio ? <audio className="audio-preview" src={resolveAssetUrl(settings.auctionStartAudio)} controls /> : null}</label>
+                  <label>Player Sold Sound<input type="file" name="playerSoldAudio" accept="audio/*" />{settings.playerSoldAudio ? <audio className="audio-preview" src={resolveAssetUrl(settings.playerSoldAudio)} controls /> : null}</label>
                 </div>
               </section>
               <section className="settings-section">
                 <div className="settings-section-heading"><span>03</span><div><h3>Category Images</h3><p>Upload separate artwork for each category card.</p></div></div>
                 <div className="category-settings-grid">
-                  {Object.entries(categoryLabels).map(([key, label]) => <label className="category-image-setting" key={key}>{label}{settings.categoryImages?.[key] ? <img src={settings.categoryImages[key]} alt={`${label} category`} /> : null}<input type="file" name={`categoryImage_${key}`} accept="image/*" /></label>)}
+                  {Object.entries(categoryLabels).map(([key, label]) => <label className="category-image-setting" key={key}>{label}{settings.categoryImages?.[key] ? <img src={resolveAssetUrl(settings.categoryImages[key])} alt={`${label} category`} /> : null}<input type="file" name={`categoryImage_${key}`} accept="image/*" /></label>)}
                 </div>
               </section>
               <section className="settings-section">
