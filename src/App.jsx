@@ -767,6 +767,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
   const [submitting, setSubmitting] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState({ image: false, paymentReceipt: false });
+  const [registrationSuccess, setRegistrationSuccess] = useState(null);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -797,6 +798,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Entry not done. Please try again.');
       setFeedback('Registration submitted successfully. Your player will appear in the auction after approval.');
+      setRegistrationSuccess({ name: formData.get('name') });
       form.reset();
       setSelectedRoles([]);
       setUploadedFiles({ image: false, paymentReceipt: false });
@@ -858,6 +860,23 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
         <button type="submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Register Player'}</button>
         {feedback ? <p className="feedback">{feedback}</p> : null}
       </form>
+
+      {registrationSuccess ? (
+        <div className="registration-success-backdrop" role="dialog" aria-modal="true" aria-labelledby="registration-success-title">
+          <section className="registration-success-popup">
+            {logo ? <img src={resolveAssetUrl(logo)} alt="RMPL logo" /> : null}
+            <span className="registration-success-icon" aria-hidden="true">✓</span>
+            <h2 id="registration-success-title">Registration Successful!</h2>
+            <p><strong>{registrationSuccess.name}</strong> has been registered successfully.</p>
+            <div className="registration-upload-confirmations">
+              <span>✓ Player photo uploaded</span>
+              <span>✓ Payment receipt uploaded</span>
+            </div>
+            <p className="registration-approval-note">The player will appear in the auction after approval.</p>
+            <button type="button" onClick={() => setRegistrationSuccess(null)}>Register Another Player</button>
+          </section>
+        </div>
+      ) : null}
 
     </main>
   );
