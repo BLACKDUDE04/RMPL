@@ -228,7 +228,20 @@ async function initializeDatabase() {
   }
 }
 
-app.use(cors());
+const allowedClientOrigins = new Set([
+  'https://rmplm.netlify.app',
+  'http://localhost:5173',
+  ...(process.env.CLIENT_URL || '').split(',').map((origin) => origin.trim().replace(/\/$/, '')).filter(Boolean)
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedClientOrigins.has(origin.replace(/\/$/, ''))) {
+      return callback(null, true);
+    }
+    return callback(new Error('Origin is not allowed by CORS'));
+  }
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
 
