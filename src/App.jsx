@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom';
 
-const API = '/api';
+const API_ORIGIN = String(import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+const API = `${API_ORIGIN}/api`;
 const AUCTION_SOUND_DURATION_MS = 5000;
 const SOLD_SOUND_DURATION_MS = 5000;
 const ROUTE_LOADING_DURATION_MS = 1500;
@@ -37,13 +38,7 @@ const resolveAssetUrl = (value) => {
   if (!value) return '';
   if (/^https?:\/\//i.test(value)) return value;
   if (value.startsWith('/uploads/')) {
-    if (typeof window !== 'undefined') {
-      const { protocol, hostname } = window.location;
-      if (hostname === 'localhost' || hostname === '127.0.0.1') {
-        return `${protocol}//${hostname}:3001${value}`;
-      }
-      return `${window.location.origin}${value}`;
-    }
+    return API_ORIGIN ? `${API_ORIGIN}${value}` : value;
   }
   return value;
 };

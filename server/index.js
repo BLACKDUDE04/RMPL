@@ -6,7 +6,7 @@ const fs = require('fs');
 const XLSX = require('xlsx');
 const mongoose = require('mongoose');
 
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
