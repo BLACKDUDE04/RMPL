@@ -228,11 +228,12 @@ async function initializeDatabase() {
   }
 }
 
-const allowedClientOrigins = new Set([
-  'https://rmplm.netlify.app',
-  'http://localhost:5173',
-  ...(process.env.CLIENT_URL || '').split(',').map((origin) => origin.trim().replace(/\/$/, '')).filter(Boolean)
-]);
+const allowedClientOrigins = new Set(
+  (process.env.CLIENT_URL || '')
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean)
+);
 
 app.use(cors({
   origin(origin, callback) {
