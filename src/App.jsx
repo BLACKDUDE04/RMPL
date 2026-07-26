@@ -836,7 +836,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
         <fieldset className="full-field role-fieldset">
           <legend>Select Role*</legend>
           <div className="role-options">
-            {['Right Hand Batsman', 'Left Hand Batsman', 'Right arm Pace Bowler','Left arm Pace Bowler', 'Right arm Spin Bowler', 'Left arm Spin Bowler', 'Wicket Keeper', 'All Rounder'].map((role) => (
+            {[''Wicket Keeper',Right Hand Batsman', 'Left Hand Batsman', 'Right arm Pace Bowler','Left arm Pace Bowler', 'Right arm Spin Bowler', 'Left arm Spin Bowler',  'All Rounder'].map((role) => (
               <label key={role} className="role-chip">
                 <input type="checkbox" checked={selectedRoles.includes(role)} onChange={() => toggleRole(role)} />
                 <span>{role}</span>
