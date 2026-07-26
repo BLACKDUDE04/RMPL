@@ -2501,7 +2501,7 @@ button {
 
   .registration-success-backdrop {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding:
       max(12px, env(safe-area-inset-top))
@@ -2511,15 +2511,13 @@ button {
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .registration-success-popup {
     width: min(100%, 460px);
-    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     margin: auto;
     padding: 24px 18px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
     border-radius: 22px;
   }
 
