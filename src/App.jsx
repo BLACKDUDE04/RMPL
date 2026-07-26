@@ -194,7 +194,7 @@ function TestimonialsPage() {
       {item.images?.[0] ? <img className="event-cover" src={resolveAssetUrl(item.images[0])} alt={item.title} /> : null}
       <div className="testimonial-content"><span>{formatEventDate(item.eventDate)}</span><h3>{item.title}</h3><p>{item.description}</p>
         {item.images?.length > 1 ? <div className="event-gallery">{item.images.slice(1).map((image, index) => <img src={resolveAssetUrl(image)} alt={`${item.title} ${index + 2}`} key={image} />)}</div> : null}
-        {item.winnerName || item.winnerImage ? <div className="previous-winner">{item.winnerImage ? <img src={item.winnerImage} alt={item.winnerName} /> : null}<div><small>PREVIOUS WINNER</small><strong>{item.winnerName || 'Winner'}</strong></div></div> : null}
+        {item.winnerName || item.winnerImage ? <div className="previous-winner">{item.winnerImage ? <img src={resolveAssetUrl(item.winnerImage)} alt={item.winnerName} /> : null}<div><small>PREVIOUS WINNER</small><strong>{item.winnerName || 'Winner'}</strong></div></div> : null}
         <button className="danger-button" onClick={() => removeItem(item)}>Delete</button>
       </div>
     </article>)}</div>
@@ -205,7 +205,7 @@ function TeamPlayersPage({ teams }) {
   const { teamId } = useParams();
   const team = teams.find((item) => item._id === teamId);
   if (!team) return <main className="panel">Loading team...</main>;
-  return <main className="panel"><div className="page-heading"><div className="team-detail-title">{team.logo ? <img src={team.logo} alt={team.name} /> : null}<div><span className="eyebrow">TEAM SQUAD</span><h2>{team.name}</h2><p>{team.playerCount} players</p></div></div><Link to="/teams" className="back-link">Back</Link></div><div className="team-detail-stats"><span>Opening <strong>{Number(team.purse).toLocaleString()} Points</strong></span><span>Spent <strong>{Number(team.spent).toLocaleString()} Points</strong></span><span>Remaining <strong>{Number(team.remainingPurse).toLocaleString()} Points</strong></span></div><div className="team-squad-grid">{(team.players || []).map((player) => <article className="squad-player-card" key={player._id}><img src={player.image} alt={player.name} /><div><span></span><h3>{player.name}</h3><p>{categoryLabels[player.category]}</p><strong>{Number(player.amount).toLocaleString()} Points</strong></div></article>)}</div></main>;
+  return <main className="panel"><div className="page-heading"><div className="team-detail-title">{team.logo ? <img src={resolveAssetUrl(team.logo)} alt={team.name} /> : null}<div><span className="eyebrow">TEAM SQUAD</span><h2>{team.name}</h2><p>{team.playerCount} players</p></div></div><Link to="/teams" className="back-link">Back</Link></div><div className="team-detail-stats"><span>Opening <strong>{Number(team.purse).toLocaleString()} Points</strong></span><span>Spent <strong>{Number(team.spent).toLocaleString()} Points</strong></span><span>Remaining <strong>{Number(team.remainingPurse).toLocaleString()} Points</strong></span></div><div className="team-squad-grid">{(team.players || []).map((player) => <article className="squad-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span></span><h3>{player.name}</h3><p>{categoryLabels[player.category]}</p><strong>{Number(player.amount).toLocaleString()} Points</strong></div></article>)}</div></main>;
 }
 
 function UnsoldPlayersPage({ teams, refreshData, settings }) {
@@ -228,7 +228,7 @@ function UnsoldPlayersPage({ teams, refreshData, settings }) {
   };
   return <main className="panel"><div className="page-heading"><div><span className="eyebrow">AUCTION HOLDING AREA</span><h2>Unsold Players</h2></div><Link className="back-link" to="/">Back</Link></div><div className="all-players-grid">{players.map((player) => <article className="database-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span className="result-status unsold">UNSOLD</span><h3>#{player.auctionNumber} · {player.name}</h3><p><strong>Base Price:</strong> {Number(player.amount || 0).toLocaleString()} Points</p><div className="management-actions"><button onClick={() => { setSelling(player); setSale({ teamId: '', amount: player.amount || '' }); }}>Sell Player</button><button className="ghost" onClick={() => restore(player)}>Return to Auction</button></div></div></article>)}</div>
     {selling ? <div className="player-modal-backdrop">{settings.logo ? <img className="player-modal-logo" src={settings.logo} alt="" /> : null}<form className="panel selected-player-card player-reveal" onSubmit={sell}><button className="modal-close" type="button" onClick={() => setSelling(null)}>×</button><div className="selected-number-badge">#{selling.auctionNumber}</div><div className="player-image-wrap"><img src={selling.image} alt={selling.name} /></div><div className="player-card-details"><span className="unsold-live-badge">UNSOLD PLAYER</span><h2>{selling.name}</h2><p>{selling.details}</p><strong className="starting-bid">Base Price: {Number(selling.amount || 0).toLocaleString()} Points</strong><div className="bid-form"><select required value={sale.teamId} onChange={(event) => setSale({ ...sale, teamId: event.target.value })}><option value="">Select team</option>{teams.map((team) => <option value={team._id} key={team._id}>{team.name} — {Number(team.remainingPurse).toLocaleString()} Points</option>)}</select><input required type="number" value={sale.amount} onChange={(event) => setSale({ ...sale, amount: event.target.value })} /><button>Confirm Sold</button></div></div></form></div> : null}
-    {celebration ? <div className="player-modal-backdrop"><div className="sold-celebration">{celebration.team?.logo ? <img className="sold-team-backdrop" src={celebration.team.logo} alt="" /> : null}<span className="sold-title">SOLD!</span><h2>{celebration.player.name}</h2><p>sold to</p><h1>{celebration.team?.name}</h1><strong>{Number(celebration.amount).toLocaleString()} Points</strong></div></div> : null}
+    {celebration ? <div className="player-modal-backdrop"><div className="sold-celebration">{celebration.team?.logo ? <img className="sold-team-backdrop" src={resolveAssetUrl(celebration.team.logo)} alt="" /> : null}<span className="sold-title">SOLD!</span><h2>{celebration.player.name}</h2><p>sold to</p><h1>{celebration.team?.name}</h1><strong>{Number(celebration.amount).toLocaleString()} Points</strong></div></div> : null}
   </main>;
 }
 
@@ -741,14 +741,14 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
           </section>
           {soldCelebration ? (
             <div className={`sold-celebration ${mvpMode ? 'mvp-sold-celebration' : ''}`}>
-              {soldCelebration.teamLogo ? <img className="sold-team-backdrop" src={soldCelebration.teamLogo} alt="" aria-hidden="true" /> : null}
+              {soldCelebration.teamLogo ? <img className="sold-team-backdrop" src={resolveAssetUrl(soldCelebration.teamLogo)} alt="" aria-hidden="true" /> : null}
               <div className="confetti" aria-hidden="true">{Array.from({ length: 18 }, (_, index) => <i key={index} />)}</div>
               <span className="sold-title">{mvpMode ? 'MVP SOLD!' : 'SOLD!'}</span>
               {mvpMode ? <span className="mvp-crown">♛</span> : null}
               <div className="celebration-matchup">
                 <img src={resolveAssetUrl(soldCelebration.playerImage || 'https://via.placeholder.com/160')} alt={soldCelebration.playerName} />
                 <span>→</span>
-                {soldCelebration.teamLogo ? <img src={soldCelebration.teamLogo} alt={soldCelebration.teamName} /> : <div className="team-logo-fallback">{soldCelebration.teamName.charAt(0)}</div>}
+                {soldCelebration.teamLogo ? <img src={resolveAssetUrl(soldCelebration.teamLogo)} alt={soldCelebration.teamName} /> : <div className="team-logo-fallback">{soldCelebration.teamName.charAt(0)}</div>}
               </div>
               <h2>{soldCelebration.playerName}</h2>
               <p>sold to</p>
