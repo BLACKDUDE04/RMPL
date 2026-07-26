@@ -2491,6 +2491,7 @@ button {
 
   .all-players-grid,
   .selected-players-grid,
+  .registration-data-grid,
   .teams-grid,
   .team-squad-grid {
     grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
@@ -2509,6 +2510,115 @@ button {
   .team-filter {
     flex-wrap: wrap;
   }
+}
+
+.registration-data-page {
+  width: min(100%, 1440px);
+  margin-inline: auto;
+}
+
+.registration-data-summary {
+  display: inline-grid;
+  gap: 3px;
+  margin-bottom: 18px;
+  padding: 12px 18px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 14px;
+}
+
+.registration-data-summary strong {
+  color: #fbbf24;
+  font-size: 1.7rem;
+}
+
+.registration-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+  gap: 18px;
+}
+
+.registration-data-card {
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  gap: 16px;
+  padding: 15px;
+  background: rgba(30, 41, 59, 0.96);
+  border: 1px solid #475569;
+  border-radius: 18px;
+}
+
+.registration-data-photo {
+  position: relative;
+}
+
+.registration-data-photo > img,
+.registration-data-photo > .registered-player-placeholder {
+  width: 145px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 14px;
+}
+
+.registration-data-status {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  padding: 5px 8px;
+  color: white;
+  background: #b45309;
+  border-radius: 999px;
+  font-size: 0.67rem;
+  font-weight: 900;
+}
+
+.registration-data-status.approved {
+  background: #15803d;
+}
+
+.registration-data-details h3 {
+  margin: 0 0 9px;
+}
+
+.registration-data-details p {
+  margin: 6px 0;
+  color: #cbd5e1;
+}
+
+.registration-receipt {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid #475569;
+}
+
+.registration-receipt > img {
+  width: 100%;
+  height: 220px;
+  object-fit: contain;
+  background: #020617;
+  border-radius: 12px;
+}
+
+.registration-receipt-pdf {
+  display: grid;
+  place-items: center;
+  min-height: 110px;
+  color: #fecaca;
+  background: #450a0a;
+  border-radius: 12px;
+  font-weight: 900;
+}
+
+.registration-receipt a {
+  justify-self: start;
+  padding: 9px 13px;
+  color: white;
+  background: #2563eb;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 800;
 }
 
 .registration-upload-progress {
@@ -2889,6 +2999,30 @@ button {
   .testimonials-grid,
   .registered-players-list {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .registration-data-card {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 12px;
+  }
+
+  .registration-data-photo > img,
+  .registration-data-photo > .registered-player-placeholder {
+    width: 100%;
+    height: clamp(240px, 85vw, 380px);
+  }
+
+  .registration-receipt {
+    grid-column: auto;
+  }
+
+  .registration-receipt > img {
+    height: clamp(220px, 75vw, 360px);
+  }
+
+  .registration-receipt a {
+    width: 100%;
+    text-align: center;
   }
 
   .pending-registration-card,
