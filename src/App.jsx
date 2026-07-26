@@ -764,8 +764,10 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
 
 function RegistrationPage({ onRegistered, registeredCount, logo }) {
   const formRef = useRef(null);
+  const submissionLockRef = useRef(false);
   const [feedback, setFeedback] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState({ image: false, paymentReceipt: false });
   const [registrationSuccess, setRegistrationSuccess] = useState(null);
@@ -790,19 +792,24 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (submissionLockRef.current) return;
+    submissionLockRef.current = true;
     setSubmitting(true);
+    setUploadProgress(0);
     setFeedback('');
 
     const form = event.currentTarget;
     if (!form.checkValidity()) {
       form.reportValidity();
       setSubmitting(false);
+      submissionLockRef.current = false;
       return;
     }
 
     if (!selectedRoles.length) {
       setFeedback('Please select at least one role for the player.');
       setSubmitting(false);
+      submissionLockRef.current = false;
       return;
     }
 
@@ -810,12 +817,25 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
     formData.set('roles', JSON.stringify(selectedRoles));
 
     try {
-      const response = await fetch(`${API}/players/register`, {
-        method: 'POST',
-        body: formData
+      const data = await new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open('POST', `${API}/players/register`);
+        request.responseType = 'json';
+        request.timeout = 180000;
+        request.upload.addEventListener('progress', (progressEvent) => {
+          if (!progressEvent.lengthComputable) return;
+          setUploadProgress(Math.min(100, Math.round((progressEvent.loaded / progressEvent.total) * 100)));
+        });
+        request.addEventListener('load', () => {
+          const responseData = request.response || {};
+          if (request.status >= 200 && request.status < 300) resolve(responseData);
+          else reject(new Error(responseData.message || 'Entry not done. Please try again.'));
+        });
+        request.addEventListener('error', () => reject(new Error('Upload failed. Check your internet connection and try again.')));
+        request.addEventListener('timeout', () => reject(new Error('Upload timed out. Please try again with a stable connection.')));
+        request.addEventListener('abort', () => reject(new Error('Upload was cancelled.')));
+        request.send(formData);
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Entry not done. Please try again.');
       setFeedback('Registration submitted successfully. Your player will appear in the auction after approval.');
       setRegistrationSuccess({ name: formData.get('name') });
       form.reset();
@@ -826,6 +846,8 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
       setFeedback(error.message || 'Entry not done. Backend error. Please try again.');
     } finally {
       setSubmitting(false);
+      setUploadProgress(0);
+      submissionLockRef.current = false;
     }
   };
 
@@ -847,7 +869,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
         
       </div>
 
-      <form ref={formRef} className="registration-form" onSubmit={handleSubmit}>
+      <form ref={formRef} className="registration-form" onSubmit={handleSubmit} aria-busy={submitting}>
         <label>Player Name*<input name="name" placeholder=" Name"required /></label>
         <label>Phone Number*<input name="phone" type="tel" placeholder=" Phone No." required /></label>
         <label>Previously Played In*<input name="playedIn" placeholder=" Team (if not played write New)" required /></label>
@@ -876,7 +898,15 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
         <legend>Check before submitting
           <p>Changes Not Allowed after submitting</p>
         </legend>
-        <button type="submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Register Player'}</button>
+        <button type="submit" disabled={submitting}>
+          {submitting ? (uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : 'Processing…') : 'Register Player'}
+        </button>
+        {submitting ? (
+          <div className="registration-upload-progress full-field" role="progressbar" aria-label="Registration upload progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow={uploadProgress}>
+            <span style={{ width: `${uploadProgress}%` }} />
+            <strong>{uploadProgress < 100 ? `${uploadProgress}% uploaded` : 'Upload complete — saving registration'}</strong>
+          </div>
+        ) : null}
         {feedback ? <p className="feedback">{feedback}</p> : null}
       </form>
 
