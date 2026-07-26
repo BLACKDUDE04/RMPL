@@ -763,11 +763,30 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
 }
 
 function RegistrationPage({ onRegistered, registeredCount, logo }) {
+  const formRef = useRef(null);
   const [feedback, setFeedback] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [selectedRoles, setSelectedRoles] = useState([]);
   const [uploadedFiles, setUploadedFiles] = useState({ image: false, paymentReceipt: false });
   const [registrationSuccess, setRegistrationSuccess] = useState(null);
+
+  const closeRegistrationSuccess = () => {
+    setRegistrationSuccess(null);
+    setFeedback('');
+    formRef.current?.reset();
+    setSelectedRoles([]);
+    setUploadedFiles({ image: false, paymentReceipt: false });
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      formRef.current?.querySelector('input[name="name"]')?.focus({ preventScroll: true });
+    });
+  };
+
+  useEffect(() => {
+    if (!registrationSuccess) return undefined;
+    const timeout = window.setTimeout(closeRegistrationSuccess, 5000);
+    return () => window.clearTimeout(timeout);
+  }, [registrationSuccess]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -828,7 +847,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
         
       </div>
 
-      <form className="registration-form" onSubmit={handleSubmit}>
+      <form ref={formRef} className="registration-form" onSubmit={handleSubmit}>
         <label>Player Name*<input name="name" placeholder=" Name"required /></label>
         <label>Phone Number*<input name="phone" type="tel" placeholder=" Phone No." required /></label>
         <label>Previously Played In*<input name="playedIn" placeholder=" Team (if not played write New)" required /></label>
@@ -873,7 +892,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
               <span>✓ Payment receipt uploaded</span>
             </div>
             <p className="registration-approval-note">The player will appear in the auction after approval.</p>
-            <button type="button" onClick={() => setRegistrationSuccess(null)}>Register Another Player</button>
+            <button type="button" onClick={closeRegistrationSuccess}>Register Another Player</button>
           </section>
         </div>
       ) : null}
