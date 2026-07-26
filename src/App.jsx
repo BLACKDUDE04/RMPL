@@ -968,6 +968,15 @@ function RegistrationDataPage() {
   }, []);
   useLiveDataRefresh(loadRegistrations);
 
+  useEffect(() => {
+    if (!preview) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setPreview(null);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [preview]);
+
   const filteredRegistrations = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return registrations;
@@ -1036,8 +1045,10 @@ function RegistrationDataPage() {
       {preview ? (
         <div className="registration-preview-backdrop" role="dialog" aria-modal="true" aria-label={preview.title} onClick={(event) => { if (event.target === event.currentTarget) setPreview(null); }}>
           <section className="registration-preview">
-            <button className="modal-close" type="button" onClick={() => setPreview(null)} aria-label="Close preview">×</button>
-            <h3>{preview.title}</h3>
+            <header className="registration-preview-header">
+              <h3>{preview.title}</h3>
+              <button type="button" onClick={() => setPreview(null)} aria-label="Close preview">Close <span aria-hidden="true">×</span></button>
+            </header>
             {preview.isPdf ? <iframe src={preview.url} title={preview.title} /> : <img src={preview.url} alt={preview.title} />}
             <a href={preview.url} target="_blank" rel="noreferrer">Open full size</a>
           </section>
