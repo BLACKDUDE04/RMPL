@@ -931,6 +931,83 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
   );
 }
 
+function RegistrationDataPage() {
+  const [registrations, setRegistrations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [feedback, setFeedback] = useState('');
+
+  const loadRegistrations = async () => {
+    try {
+      const response = await fetch(`${API}/players/registrations`);
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to load registration data');
+      setRegistrations(data.registrations || []);
+      setFeedback('');
+    } catch (error) {
+      setFeedback(error.message || 'Unable to load registration data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRegistrations();
+  }, []);
+  useLiveDataRefresh(loadRegistrations);
+
+  return (
+    <main className="panel registration-data-page">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">REGISTRATION RECORDS</span>
+          <h2>Player Registration Data</h2>
+          <p>View submitted player photos, details, and payment receipts.</p>
+        </div>
+        <Link className="back-link" to="/">Back to auction</Link>
+      </div>
+      <div className="registration-data-summary">
+        <strong>{registrations.length}</strong>
+        <span>Total registrations</span>
+      </div>
+      {feedback ? <p className="feedback">{feedback}</p> : null}
+      {loading ? <p className="empty-state">Loading registration data…</p> : registrations.length ? (
+        <div className="registration-data-grid">
+          {registrations.map((player) => {
+            const receiptUrl = resolveAssetUrl(player.paymentReceipt);
+            const receiptIsPdf = /\.pdf(?:$|\?)/i.test(receiptUrl);
+            return (
+              <article className="registration-data-card" key={player._id}>
+                <div className="registration-data-photo">
+                  {player.image ? <img src={resolveAssetUrl(player.image)} alt={`${player.name} registration`} loading="lazy" /> : <div className="registered-player-placeholder">{player.name?.charAt(0) || '?'}</div>}
+                  <span className={`registration-data-status ${player.registrationStatus === 'approved' ? 'approved' : 'pending'}`}>
+                    {player.registrationStatus === 'approved' ? 'APPROVED' : 'PENDING'}
+                  </span>
+                </div>
+                <div className="registration-data-details">
+                  <h3>{player.name}</h3>
+                  <p><strong>Phone:</strong> {player.phone || '—'}</p>
+                  <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn || 'New player'}</p>
+                  {player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}
+                  <p><strong>Submitted:</strong> {player.createdAt ? new Date(player.createdAt).toLocaleString() : '—'}</p>
+                </div>
+                <div className="registration-receipt">
+                  <strong>Payment Receipt</strong>
+                  {receiptUrl ? (
+                    <>
+                      {receiptIsPdf ? <div className="registration-receipt-pdf">PDF receipt</div> : <img src={receiptUrl} alt={`${player.name} payment receipt`} loading="lazy" />}
+                      <a href={receiptUrl} target="_blank" rel="noreferrer">View full receipt</a>
+                    </>
+                  ) : <p>No receipt available</p>}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : <p className="empty-state">No player registrations found.</p>}
+    </main>
+  );
+}
+
 function App() {
   const location = useLocation();
   const isStandaloneRegistrationRoute = location.pathname === '/register' || location.pathname === '/register-form';
@@ -1199,6 +1276,7 @@ function App() {
               <Link to="/unsold" onClick={() => setShowMoreNav(false)}>Unsold Players</Link>
               <Link to="/teams" onClick={() => setShowMoreNav(false)}>Teams</Link>
               <Link to="/register" onClick={() => setShowMoreNav(false)}>Register Player</Link>
+              <Link to="/registration-data" onClick={() => setShowMoreNav(false)}>Registration Data</Link>
               <Link to="/approvals" onClick={() => setShowMoreNav(false)}>Approvals</Link>
               <Link to="/excel" onClick={() => setShowMoreNav(false)}>Excel</Link>
               <Link to="/video" onClick={() => setShowMoreNav(false)}>Welcome Video</Link>
@@ -1244,6 +1322,7 @@ function App() {
 
         <Route path="/register" element={<RegistrationPage onRegistered={loadData} logo={settings.logo} registeredCount={pendingRegistrations.length + categories.reduce((count, category) => count + (category.players?.filter((player) => player.source === 'registration').length || 0), 0)} />} />
         <Route path="/register-form" element={<RegistrationPage onRegistered={loadData} logo={settings.logo} registeredCount={pendingRegistrations.length + categories.reduce((count, category) => count + (category.players?.filter((player) => player.source === 'registration').length || 0), 0)} />} />
+        <Route path="/registration-data" element={<RegistrationDataPage />} />
         <Route path="/approvals" element={<main className="panel approvals-page"><div className="page-heading"><div><span className="eyebrow">APPROVAL PANEL</span><h2>Pending registrations</h2><p>Review player signups and approve them for auction.</p></div><Link className="back-link" to="/">Back to auction</Link></div><section className="pending-registrations-panel"><div className="pending-registrations-header"><div><span className="eyebrow">PENDING</span><h3>Player approvals</h3></div><span className="pending-count-badge">{pendingRegistrations.length}</span></div>{pendingRegistrations.length ? <div className="pending-registrations-list">{pendingRegistrations.map((player) => <article className="pending-registration-card" key={player._id}><div className="pending-registration-main"><h4>{player.name}</h4><p><strong>Phone:</strong> {player.phone || '—'}</p>{player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}{player.previouslyPlayedIn || player.playedIn ? <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn}</p> : null}{player.details ? <p>{player.details}</p> : null}{player.paymentReceipt ? <p><a href={resolveAssetUrl(player.paymentReceipt)} target="_blank" rel="noreferrer">View payment receipt</a></p> : null}</div><button type="button" onClick={() => approveRegistration(player)}>Approve</button></article>)}</div> : <p className="pending-empty">No pending registrations right now.</p>}</section>{feedback ? <p className="feedback">{feedback}</p> : null}</main>} />
         <Route path="/category/:categoryKey" element={<CategoryAuctionPage categories={categories} refreshCategories={loadData} teams={teams} auctionStartAudio={settings.auctionStartAudio} playerSoldAudio={settings.playerSoldAudio} auctionLogo={settings.logo} playerLimitEnabled={settings.playerLimitEnabled} maxPlayersPerTeam={Number(settings.maxPlayersPerTeam || 0)} cardSelectionEnabled={settings.auctionCardSelectionEnabled} />} />
         <Route path="/mvp" element={<CategoryAuctionPage categories={categories} refreshCategories={loadData} teams={teams} auctionStartAudio={settings.auctionStartAudio} playerSoldAudio={settings.playerSoldAudio} auctionLogo={settings.logo} playerLimitEnabled={settings.playerLimitEnabled} maxPlayersPerTeam={Number(settings.maxPlayersPerTeam || 0)} fixedCategoryKey="mvp" mvpMode />} />
