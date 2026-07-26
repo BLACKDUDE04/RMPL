@@ -2650,8 +2650,10 @@ button {
 .registration-preview {
   position: relative;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
   width: min(100%, 850px);
+  height: min(92dvh, 900px);
   max-height: calc(100dvh - 36px);
   padding: 22px;
   overflow: auto;
@@ -2660,15 +2662,45 @@ button {
   border-radius: 18px;
 }
 
-.registration-preview h3 {
+.registration-preview-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 10px;
+  background: #0f172a;
+  border-bottom: 1px solid #334155;
+}
+
+.registration-preview-header h3 {
   margin: 0;
-  padding-right: 42px;
+}
+
+.registration-preview-header button {
+  flex: 0 0 auto;
+  min-width: 92px;
+  min-height: 44px;
+  padding: 9px 13px;
+  color: white;
+  background: #dc2626;
+  border: 2px solid #fca5a5;
+  border-radius: 10px;
+  font-weight: 900;
+}
+
+.registration-preview-header button span {
+  margin-left: 5px;
+  font-size: 1.25rem;
 }
 
 .registration-preview img,
 .registration-preview iframe {
   width: 100%;
-  height: min(72dvh, 760px);
+  height: 100%;
+  min-height: 0;
   object-fit: contain;
   background: #020617;
   border: 0;
@@ -3101,13 +3133,28 @@ button {
   }
 
   .registration-preview {
+    width: 100%;
+    height: calc(100dvh - 16px);
     max-height: calc(100dvh - 16px);
     padding: 16px 12px;
+    border-radius: 14px;
   }
 
   .registration-preview img,
   .registration-preview iframe {
-    height: 70dvh;
+    height: 100%;
+  }
+
+  .registration-preview-header {
+    align-items: flex-start;
+  }
+
+  .registration-preview-header h3 {
+    font-size: 1rem;
+  }
+
+  .registration-preview-header button {
+    min-width: 82px;
   }
 
   .pending-registration-card,
