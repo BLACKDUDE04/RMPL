@@ -1303,7 +1303,7 @@ function App() {
           </div>
         </div>
         <nav>
-          <Link to="/">Auction</Link>
+          <Link to="/auction">Auction</Link>
           <Link to="/purse">Purse Value</Link>
           <div className="more-nav">
             <button type="button" className={`more-nav-button ${showMoreNav ? 'active' : ''}`} onClick={() => setShowMoreNav((visible) => !visible)} aria-expanded={showMoreNav}>
