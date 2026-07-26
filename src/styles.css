@@ -8,10 +8,76 @@
   box-sizing: border-box;
 }
 
+html {
+  width: 100%;
+  min-width: 0;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
+  width: 100%;
+  min-width: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   background: linear-gradient(135deg, #020617, #111827);
+}
+
+#root {
+  width: 100%;
+  min-width: 0;
+}
+
+img,
+video,
+audio,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+input,
+select,
+textarea,
+button {
+  max-width: 100%;
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
+.panel,
+.categories-panel,
+.auction-panel,
+.category-auction-page,
+main,
+section,
+article,
+form,
+fieldset,
+.brand,
+.page-heading > *,
+.player-card-details,
+.database-player-details,
+.pending-registration-main {
+  min-width: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+strong,
+span,
+a,
+label {
+  overflow-wrap: anywhere;
 }
 
 .app-shell {
@@ -2379,11 +2445,13 @@ button {
   .topbar {
     align-items: flex-start;
     gap: 14px;
+    flex-wrap: wrap;
   }
 
   nav {
+    flex: 1 1 100%;
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 
   .main-grid {
@@ -2420,12 +2488,39 @@ button {
   .category-settings-grid {
     grid-template-columns: 1fr;
   }
+
+  .all-players-grid,
+  .selected-players-grid,
+  .teams-grid,
+  .team-squad-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  }
+
+  .settings-page,
+  .form-page,
+  .welcome-video-page {
+    width: 100%;
+  }
+
+  .page-heading,
+  .page-heading-actions,
+  .action-row,
+  .management-actions,
+  .team-filter {
+    flex-wrap: wrap;
+  }
 }
 
 @media (max-width: 600px) {
   .registration-page {
     width: 100%;
     margin: 0;
+  }
+
+  .app-shell {
+    padding: 8px;
+    background-attachment: scroll;
+    background-size: cover;
   }
 
   .registration-heading {
@@ -2555,11 +2650,20 @@ button {
   .topbar,
   .page-heading {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .page-heading-actions {
     width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
     justify-content: space-between;
+  }
+
+  .page-heading-actions > *,
+  .page-heading > .back-link {
+    width: 100%;
+    text-align: center;
   }
 
   .team-detail-stats {
@@ -2580,17 +2684,49 @@ button {
   }
 
   .topbar {
+    width: 100%;
     padding: 14px;
+  }
+
+  .brand {
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .brand .logo {
+    width: 84px;
+    height: 64px;
+    flex: 0 0 84px;
+    object-fit: contain;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(1.2rem, 6vw, 1.65rem);
+  }
+
+  .brand p {
+    margin: 4px 0 0;
+    font-size: 0.82rem;
   }
 
   nav {
     width: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
   }
 
-  nav a {
+  nav a,
+  nav button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 9px 7px;
     text-align: center;
+    font-size: 0.84rem;
   }
 
   .more-nav,
@@ -2645,7 +2781,8 @@ button {
   .categories-panel,
   .auction-panel,
   .panel {
-    padding: 15px;
+    width: 100%;
+    padding: 12px;
     border-radius: 15px;
   }
 
@@ -2658,7 +2795,7 @@ button {
   }
 
   .cat-card {
-    grid-template-columns: 120px 1fr;
+    grid-template-columns: minmax(90px, 34vw) minmax(0, 1fr);
   }
 
   .category-image-wrap {
@@ -2712,7 +2849,233 @@ button {
 
   .database-player-card > img {
     width: 100%;
-    height: 280px;
+    height: clamp(230px, 76vw, 340px);
+  }
+
+  .selected-players-grid,
+  .teams-grid,
+  .team-squad-grid,
+  .team-settings-grid,
+  .pending-registrations-list,
+  .testimonials-grid,
+  .registered-players-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pending-registration-card,
+  .registered-player-card,
+  .squad-player-card,
+  .result-player-card {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pending-registration-card button,
+  .management-actions button,
+  .team-filter,
+  .team-filter select,
+  .settings-save-bar button,
+  .bid-form button {
+    width: 100%;
+  }
+
+  .squad-player-card img,
+  .result-player-card img {
+    width: 100%;
+    height: clamp(220px, 70vw, 320px);
+  }
+
+  .team-detail-title {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .team-detail-title > img {
+    width: 68px;
+    height: 68px;
+    flex: 0 0 68px;
+  }
+
+  .settings-section,
+  .sold-team-section,
+  .team-card,
+  .purse-card {
+    padding: 12px;
+  }
+
+  .settings-section-heading {
+    align-items: flex-start;
+  }
+
+  .settings-section-heading > span {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+  }
+
+  .team-form,
+  .manual-player-form,
+  .testimonial-form,
+  .excel-column-grid,
+  .settings-fields-grid,
+  .category-settings-grid,
+  .player-limit-setting,
+  .players-filter-bar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .player-search,
+  .category-filter {
+    width: 100%;
+  }
+
+  .player-search {
+    padding: 8px;
+  }
+
+  .player-search button {
+    flex: 0 0 auto;
+  }
+
+  .event-cover,
+  .event-gallery img,
+  .previous-winner img {
+    height: clamp(220px, 72vw, 360px);
+  }
+
+  .welcome-video-preview,
+  .welcome-video-preview video {
+    width: 100%;
+    min-height: 0;
+    height: auto;
+    max-height: 70dvh;
+  }
+
+  .edit-player-modal,
+  .unsold-sale-modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    padding: 16px;
+  }
+
+  .player-modal-backdrop {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sold-celebration {
+    padding:
+      max(18px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(18px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    overflow-y: auto;
+  }
+
+  .sold-title {
+    font-size: clamp(2.5rem, 18vw, 5.5rem);
+  }
+
+  .sold-celebration h1 {
+    font-size: clamp(1.7rem, 9vw, 3rem);
+  }
+
+  .celebration-matchup {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .celebration-matchup img,
+  .team-logo-fallback {
+    width: clamp(70px, 25vw, 100px);
+    height: clamp(70px, 25vw, 100px);
+  }
+
+  .number-grid {
+    grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  }
+
+  .purse-stats-grid {
+    margin-inline: -4px;
+    padding-inline: 4px;
+  }
+
+  .purse-stats-grid .purse-card,
+  .purse-card-link {
+    flex-basis: min(330px, 88vw);
+  }
+
+  .spend-progress-label,
+  .purse-numbers > div {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .audio-preview {
+    width: 100%;
+  }
+
+  .upload-box input,
+  input[type="file"] {
+    width: 100%;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-shell {
+    padding: 5px;
+  }
+
+  .topbar,
+  .categories-panel,
+  .auction-panel,
+  .panel {
+    padding: 10px;
+  }
+
+  nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cat-card,
+  .mvp-player-card {
+    grid-template-columns: minmax(80px, 32vw) minmax(0, 1fr);
+  }
+
+  .mvp-player-card img {
+    width: 100%;
+    height: 125px;
+  }
+
+  .registration-success-popup {
+    padding: 18px 12px;
+  }
+
+  .selected-player-card {
+    padding-inline: 10px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  .registration-success-backdrop,
+  .player-modal-backdrop,
+  .sold-celebration {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .registration-success-popup {
+    margin-block: 8px;
+  }
+
+  .selected-player-card {
+    grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
+    grid-template-rows: 1fr;
+    min-height: 100dvh;
+    height: auto;
   }
 }
 
