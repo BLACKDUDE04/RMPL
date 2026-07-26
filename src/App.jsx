@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 
 const API_ORIGIN = String(import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const API = `${API_ORIGIN}/api`;
@@ -1327,7 +1327,8 @@ function App() {
       </header> : null}
 
       <Routes>
-        <Route path="/" element={
+        <Route path="/" element={<Navigate to="/register" replace />} />
+        <Route path="/auction" element={
           <main className="main-grid">
             <section className="categories-panel">
               <h2>Categories</h2>
