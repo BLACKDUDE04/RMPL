@@ -2511,6 +2511,35 @@ button {
   }
 }
 
+.registration-upload-progress {
+  position: relative;
+  min-height: 42px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: #0f172a;
+  border: 1px solid #60a5fa;
+  border-radius: 12px;
+}
+
+.registration-upload-progress > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 3px;
+  background: linear-gradient(90deg, #2563eb, #22c55e);
+  transition: width 0.2s ease;
+}
+
+.registration-upload-progress > strong {
+  position: relative;
+  z-index: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 0.88rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
 @media (max-width: 600px) {
   .registration-page {
     width: 100%;
