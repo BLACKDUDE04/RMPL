@@ -26,6 +26,17 @@ const formatEventDate = (value) => {
   return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : value;
 };
 
+const formatRegistrationDate = (value) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(date);
+};
+
 const categoryLabels = {
   allrounder: 'All Rounder',
   batsmen: 'Batsmen',
@@ -1002,7 +1013,7 @@ function RegistrationDataPage() {
                   <div className="registered-player-placeholder">{player.name?.charAt(0) || '?'}</div>
                   <div>
                     <h3>{player.name}</h3>
-                    <small>{player.createdAt ? new Date(player.createdAt).toLocaleString() : '—'}</small>
+                    <small>{formatRegistrationDate(player.createdAt)}</small>
                   </div>
                   <span className={`registration-data-status ${player.registrationStatus === 'approved' ? 'approved' : 'pending'}`}>
                     {player.registrationStatus === 'approved' ? 'APPROVED' : 'PENDING'}
