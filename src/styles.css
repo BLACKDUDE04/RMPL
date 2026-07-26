@@ -2538,9 +2538,33 @@ button {
   gap: 18px;
 }
 
+.registration-data-search {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 14px;
+  font-weight: 800;
+}
+
+.registration-data-search input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #64748b;
+  border-radius: 10px;
+}
+
+.registration-data-search button {
+  padding: 10px 13px;
+}
+
 .registration-data-card {
   display: grid;
-  grid-template-columns: 145px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   padding: 15px;
   background: rgba(30, 41, 59, 0.96);
@@ -2548,22 +2572,28 @@ button {
   border-radius: 18px;
 }
 
-.registration-data-photo {
-  position: relative;
+.registration-data-card-heading {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
 }
 
-.registration-data-photo > img,
-.registration-data-photo > .registered-player-placeholder {
-  width: 145px;
-  height: 180px;
-  object-fit: cover;
-  border-radius: 14px;
+.registration-data-card-heading .registered-player-placeholder {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+}
+
+.registration-data-card-heading h3 {
+  margin: 0 0 4px;
+}
+
+.registration-data-card-heading small {
+  color: #94a3b8;
 }
 
 .registration-data-status {
-  position: absolute;
-  right: 7px;
-  bottom: 7px;
   padding: 5px 8px;
   color: white;
   background: #b45309;
@@ -2585,35 +2615,69 @@ button {
   color: #cbd5e1;
 }
 
-.registration-receipt {
-  grid-column: 1 / -1;
+.registration-data-actions {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   padding-top: 14px;
   border-top: 1px solid #475569;
 }
 
-.registration-receipt > img {
-  width: 100%;
-  height: 220px;
-  object-fit: contain;
-  background: #020617;
-  border-radius: 12px;
+.registration-data-actions button {
+  min-height: 44px;
+  color: white;
+  background: #2563eb;
+  border-radius: 10px;
 }
 
-.registration-receipt-pdf {
+.registration-data-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.registration-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 4500;
   display: grid;
   place-items: center;
-  min-height: 110px;
-  color: #fecaca;
-  background: #450a0a;
-  border-radius: 12px;
-  font-weight: 900;
+  padding: 18px;
+  overflow: auto;
+  background: rgba(2, 6, 23, 0.88);
+  backdrop-filter: blur(7px);
 }
 
-.registration-receipt a {
-  justify-self: start;
-  padding: 9px 13px;
+.registration-preview {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  width: min(100%, 850px);
+  max-height: calc(100dvh - 36px);
+  padding: 22px;
+  overflow: auto;
+  background: #0f172a;
+  border: 1px solid #60a5fa;
+  border-radius: 18px;
+}
+
+.registration-preview h3 {
+  margin: 0;
+  padding-right: 42px;
+}
+
+.registration-preview img,
+.registration-preview iframe {
+  width: 100%;
+  height: min(72dvh, 760px);
+  object-fit: contain;
+  background: #020617;
+  border: 0;
+  border-radius: 12px;
+}
+
+.registration-preview a {
+  justify-self: center;
+  padding: 10px 14px;
   color: white;
   background: #2563eb;
   border-radius: 10px;
@@ -3006,23 +3070,44 @@ button {
     padding: 12px;
   }
 
-  .registration-data-photo > img,
-  .registration-data-photo > .registered-player-placeholder {
-    width: 100%;
-    height: clamp(240px, 85vw, 380px);
+  .registration-data-search {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .registration-receipt {
-    grid-column: auto;
+  .registration-data-search > span {
+    grid-column: 1 / -1;
   }
 
-  .registration-receipt > img {
-    height: clamp(220px, 75vw, 360px);
+  .registration-data-card-heading {
+    grid-template-columns: 50px minmax(0, 1fr);
   }
 
-  .registration-receipt a {
-    width: 100%;
-    text-align: center;
+  .registration-data-card-heading .registered-player-placeholder {
+    width: 50px;
+    height: 50px;
+  }
+
+  .registration-data-status {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .registration-data-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .registration-preview-backdrop {
+    padding: 8px;
+  }
+
+  .registration-preview {
+    max-height: calc(100dvh - 16px);
+    padding: 16px 12px;
+  }
+
+  .registration-preview img,
+  .registration-preview iframe {
+    height: 70dvh;
   }
 
   .pending-registration-card,
