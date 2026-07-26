@@ -935,6 +935,8 @@ function RegistrationDataPage() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState('');
+  const [query, setQuery] = useState('');
+  const [preview, setPreview] = useState(null);
 
   const loadRegistrations = async () => {
     try {
@@ -955,6 +957,19 @@ function RegistrationDataPage() {
   }, []);
   useLiveDataRefresh(loadRegistrations);
 
+  const filteredRegistrations = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return registrations;
+    return registrations.filter((player) => [
+      player.name,
+      player.phone,
+      player.registrationStatus,
+      player.previouslyPlayedIn,
+      player.playedIn,
+      ...(player.registrationRoles || [])
+    ].some((value) => String(value || '').toLowerCase().includes(normalizedQuery)));
+  }, [query, registrations]);
+
   return (
     <main className="panel registration-data-page">
       <div className="page-heading">
@@ -969,41 +984,54 @@ function RegistrationDataPage() {
         <strong>{registrations.length}</strong>
         <span>Total registrations</span>
       </div>
+      <label className="registration-data-search">
+        <span>Search</span>
+        <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by name, phone, role, team, or status" />
+        {query ? <button type="button" onClick={() => setQuery('')}>Clear</button> : null}
+      </label>
       {feedback ? <p className="feedback">{feedback}</p> : null}
-      {loading ? <p className="empty-state">Loading registration data…</p> : registrations.length ? (
+      {loading ? <p className="empty-state">Loading registration data…</p> : filteredRegistrations.length ? (
         <div className="registration-data-grid">
-          {registrations.map((player) => {
+          {filteredRegistrations.map((player) => {
+            const playerImageUrl = resolveAssetUrl(player.image);
             const receiptUrl = resolveAssetUrl(player.paymentReceipt);
             const receiptIsPdf = /\.pdf(?:$|\?)/i.test(receiptUrl);
             return (
               <article className="registration-data-card" key={player._id}>
-                <div className="registration-data-photo">
-                  {player.image ? <img src={resolveAssetUrl(player.image)} alt={`${player.name} registration`} loading="lazy" /> : <div className="registered-player-placeholder">{player.name?.charAt(0) || '?'}</div>}
+                <div className="registration-data-card-heading">
+                  <div className="registered-player-placeholder">{player.name?.charAt(0) || '?'}</div>
+                  <div>
+                    <h3>{player.name}</h3>
+                    <small>{player.createdAt ? new Date(player.createdAt).toLocaleString() : '—'}</small>
+                  </div>
                   <span className={`registration-data-status ${player.registrationStatus === 'approved' ? 'approved' : 'pending'}`}>
                     {player.registrationStatus === 'approved' ? 'APPROVED' : 'PENDING'}
                   </span>
                 </div>
                 <div className="registration-data-details">
-                  <h3>{player.name}</h3>
                   <p><strong>Phone:</strong> {player.phone || '—'}</p>
                   <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn || 'New player'}</p>
                   {player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}
-                  <p><strong>Submitted:</strong> {player.createdAt ? new Date(player.createdAt).toLocaleString() : '—'}</p>
                 </div>
-                <div className="registration-receipt">
-                  <strong>Payment Receipt</strong>
-                  {receiptUrl ? (
-                    <>
-                      {receiptIsPdf ? <div className="registration-receipt-pdf">PDF receipt</div> : <img src={receiptUrl} alt={`${player.name} payment receipt`} loading="lazy" />}
-                      <a href={receiptUrl} target="_blank" rel="noreferrer">View full receipt</a>
-                    </>
-                  ) : <p>No receipt available</p>}
+                <div className="registration-data-actions">
+                  <button type="button" disabled={!playerImageUrl} onClick={() => setPreview({ url: playerImageUrl, title: `${player.name} — Player Photo`, isPdf: false })}>View Player Photo</button>
+                  <button type="button" disabled={!receiptUrl} onClick={() => setPreview({ url: receiptUrl, title: `${player.name} — Payment Receipt`, isPdf: receiptIsPdf })}>View Receipt</button>
                 </div>
               </article>
             );
           })}
         </div>
-      ) : <p className="empty-state">No player registrations found.</p>}
+      ) : <p className="empty-state">{registrations.length ? 'No registrations match your search.' : 'No player registrations found.'}</p>}
+      {preview ? (
+        <div className="registration-preview-backdrop" role="dialog" aria-modal="true" aria-label={preview.title} onClick={(event) => { if (event.target === event.currentTarget) setPreview(null); }}>
+          <section className="registration-preview">
+            <button className="modal-close" type="button" onClick={() => setPreview(null)} aria-label="Close preview">×</button>
+            <h3>{preview.title}</h3>
+            {preview.isPdf ? <iframe src={preview.url} title={preview.title} /> : <img src={preview.url} alt={preview.title} />}
+            <a href={preview.url} target="_blank" rel="noreferrer">Open full size</a>
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
