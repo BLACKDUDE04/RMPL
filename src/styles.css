@@ -2500,15 +2500,26 @@ button {
   }
 
   .registration-success-backdrop {
-    align-items: end;
-    padding: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .registration-success-popup {
-    width: 100%;
-    max-height: calc(100dvh - 24px);
+    width: min(100%, 460px);
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    margin: auto;
     padding: 24px 18px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     border-radius: 22px;
   }
 
