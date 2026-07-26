@@ -97,7 +97,7 @@ function PlayersPage({ refreshData }) {
   };
   const filtered = players.filter((player) => {
     const matchesCategory = categoryFilter === 'all' || player.category === categoryFilter;
-    const matchesSearch = [player.auctionNumber, player.name, player.category, player.playedIn, player.team, player.details, player.sold ? 'sold' : player.unsold ? 'unsold' : 'available'].join(' ').toLowerCase().includes(query.toLowerCase());
+    const matchesSearch = [player.auctionNumber, player.name, player.age, player.category, player.playedIn, player.team, player.details, player.sold ? 'sold' : player.unsold ? 'unsold' : 'available'].join(' ').toLowerCase().includes(query.toLowerCase());
     return matchesCategory && matchesSearch;
   });
   return <main className="panel">
@@ -105,6 +105,7 @@ function PlayersPage({ refreshData }) {
     {showForm || editing ? <form className="manual-player-form player-editor form-reveal" onSubmit={save} key={editing?._id || 'new'}>
       <div className="full-field player-form-image-preview">{playerImagePreview ? <img src={resolveAssetUrl(playerImagePreview)} alt="Player preview" /> : <div><span>Image Preview</span><small>Upload an image or enter an image URL</small></div>}</div>
       <label>Name<input name="name" defaultValue={editing?.name || ''} required /></label>
+      <label>Age<input name="age" type="number" inputMode="numeric" min="1" step="1" defaultValue={editing?.age || ''} /></label>
       <label>Category<select name="category" defaultValue={editing?.category || 'allrounder'}><option value="allrounder">All Rounder</option><option value="batsmen">Batsmen</option><option value="bowler">Bowler</option><option value="wicketkeeper">Wicket Keeper</option><option value="mvp">MVP Player</option></select></label>
       <label className="full-field">Details<textarea name="details" defaultValue={editing?.details || ''} /></label>
       <label>Played In<input name="playedIn" placeholder="Previous or regular team" defaultValue={editing?.playedIn || (!editing?.sold ? editing?.team : '') || ''} /></label><label>Base Price<input name="amount" type="number" min="0" defaultValue={editing?.amount || 0} /></label><label>Phone Number<input name="phone" type="tel" defaultValue={editing?.phone || ''} placeholder="Optional" /></label>
@@ -126,7 +127,7 @@ function PlayersPage({ refreshData }) {
       </label>
     </div>
     <p className="filter-result-count">{filtered.length} player{filtered.length === 1 ? '' : 's'} shown</p>
-    <div className="all-players-grid">{filtered.map((player) => <article className="database-player-card" key={player._id}><img src={resolveAssetUrl(player.image || 'https://via.placeholder.com/240')} alt={player.name} /><div className="database-player-details"><span className={`result-status ${player.sold ? 'sold' : player.unsold ? 'unsold' : 'available'}`}>{player.sold ? 'SOLD' : player.unsold ? 'UNSOLD' : 'AVAILABLE'}</span><h3>#{player.auctionNumber} · {player.name}</h3><p>{categoryLabels[player.category]}</p><p><strong>Played In:</strong> {player.playedIn || (!player.sold ? player.team : '') || '—'}</p><p>{player.details}</p><strong>{Number(player.amount || 0).toLocaleString()} Points</strong><div className="management-actions"><button onClick={() => { setEditing(player); setShowForm(true); window.scrollTo(0, 0); }}>Edit</button><button className="danger-button" onClick={() => remove(player)}>Delete</button></div></div></article>)}</div>
+    <div className="all-players-grid">{filtered.map((player) => <article className="database-player-card" key={player._id}><img src={resolveAssetUrl(player.image || 'https://via.placeholder.com/240')} alt={player.name} /><div className="database-player-details"><span className={`result-status ${player.sold ? 'sold' : player.unsold ? 'unsold' : 'available'}`}>{player.sold ? 'SOLD' : player.unsold ? 'UNSOLD' : 'AVAILABLE'}</span><h3>#{player.auctionNumber} · {player.name}</h3><p>{categoryLabels[player.category]}</p><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Played In:</strong> {player.playedIn || (!player.sold ? player.team : '') || '—'}</p><p>{player.details}</p><strong>{Number(player.amount || 0).toLocaleString()} Points</strong><div className="management-actions"><button onClick={() => { setEditing(player); setShowForm(true); window.scrollTo(0, 0); }}>Edit</button><button className="danger-button" onClick={() => remove(player)}>Delete</button></div></div></article>)}</div>
   </main>;
 }
 
@@ -216,7 +217,7 @@ function TeamPlayersPage({ teams }) {
   const { teamId } = useParams();
   const team = teams.find((item) => item._id === teamId);
   if (!team) return <main className="panel">Loading team...</main>;
-  return <main className="panel"><div className="page-heading"><div className="team-detail-title">{team.logo ? <img src={resolveAssetUrl(team.logo)} alt={team.name} /> : null}<div><span className="eyebrow">TEAM SQUAD</span><h2>{team.name}</h2><p>{team.playerCount} players</p></div></div><Link to="/teams" className="back-link">Back</Link></div><div className="team-detail-stats"><span>Opening <strong>{Number(team.purse).toLocaleString()} Points</strong></span><span>Spent <strong>{Number(team.spent).toLocaleString()} Points</strong></span><span>Remaining <strong>{Number(team.remainingPurse).toLocaleString()} Points</strong></span></div><div className="team-squad-grid">{(team.players || []).map((player) => <article className="squad-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span></span><h3>{player.name}</h3><p>{categoryLabels[player.category]}</p><strong>{Number(player.amount).toLocaleString()} Points</strong></div></article>)}</div></main>;
+  return <main className="panel"><div className="page-heading"><div className="team-detail-title">{team.logo ? <img src={resolveAssetUrl(team.logo)} alt={team.name} /> : null}<div><span className="eyebrow">TEAM SQUAD</span><h2>{team.name}</h2><p>{team.playerCount} players</p></div></div><Link to="/teams" className="back-link">Back</Link></div><div className="team-detail-stats"><span>Opening <strong>{Number(team.purse).toLocaleString()} Points</strong></span><span>Spent <strong>{Number(team.spent).toLocaleString()} Points</strong></span><span>Remaining <strong>{Number(team.remainingPurse).toLocaleString()} Points</strong></span></div><div className="team-squad-grid">{(team.players || []).map((player) => <article className="squad-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span></span><h3>{player.name}</h3><p>{categoryLabels[player.category]}</p><p><strong>Age:</strong> {player.age || '—'}</p><strong>{Number(player.amount).toLocaleString()} Points</strong></div></article>)}</div></main>;
 }
 
 function UnsoldPlayersPage({ teams, refreshData, settings }) {
@@ -237,8 +238,8 @@ function UnsoldPlayersPage({ teams, refreshData, settings }) {
     setCelebration({ player: selling, team, amount: sale.amount }); setSelling(null); await Promise.all([load(), refreshData()]);
     setTimeout(() => { if (audio) audio.pause(); setCelebration(null); }, SOLD_SOUND_DURATION_MS);
   };
-  return <main className="panel"><div className="page-heading"><div><span className="eyebrow">AUCTION HOLDING AREA</span><h2>Unsold Players</h2></div><Link className="back-link" to="/">Back</Link></div><div className="all-players-grid">{players.map((player) => <article className="database-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span className="result-status unsold">UNSOLD</span><h3>#{player.auctionNumber} · {player.name}</h3><p><strong>Base Price:</strong> {Number(player.amount || 0).toLocaleString()} Points</p><div className="management-actions"><button onClick={() => { setSelling(player); setSale({ teamId: '', amount: player.amount || '' }); }}>Sell Player</button><button className="ghost" onClick={() => restore(player)}>Return to Auction</button></div></div></article>)}</div>
-    {selling ? <div className="player-modal-backdrop">{settings.logo ? <img className="player-modal-logo" src={settings.logo} alt="" /> : null}<form className="panel selected-player-card player-reveal" onSubmit={sell}><button className="modal-close" type="button" onClick={() => setSelling(null)}>×</button><div className="selected-number-badge">#{selling.auctionNumber}</div><div className="player-image-wrap"><img src={selling.image} alt={selling.name} /></div><div className="player-card-details"><span className="unsold-live-badge">UNSOLD PLAYER</span><h2>{selling.name}</h2><p>{selling.details}</p><strong className="starting-bid">Base Price: {Number(selling.amount || 0).toLocaleString()} Points</strong><div className="bid-form"><select required value={sale.teamId} onChange={(event) => setSale({ ...sale, teamId: event.target.value })}><option value="">Select team</option>{teams.map((team) => <option value={team._id} key={team._id}>{team.name} — {Number(team.remainingPurse).toLocaleString()} Points</option>)}</select><input required type="number" value={sale.amount} onChange={(event) => setSale({ ...sale, amount: event.target.value })} /><button>Confirm Sold</button></div></div></form></div> : null}
+  return <main className="panel"><div className="page-heading"><div><span className="eyebrow">AUCTION HOLDING AREA</span><h2>Unsold Players</h2></div><Link className="back-link" to="/">Back</Link></div><div className="all-players-grid">{players.map((player) => <article className="database-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span className="result-status unsold">UNSOLD</span><h3>#{player.auctionNumber} · {player.name}</h3><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Base Price:</strong> {Number(player.amount || 0).toLocaleString()} Points</p><div className="management-actions"><button onClick={() => { setSelling(player); setSale({ teamId: '', amount: player.amount || '' }); }}>Sell Player</button><button className="ghost" onClick={() => restore(player)}>Return to Auction</button></div></div></article>)}</div>
+    {selling ? <div className="player-modal-backdrop">{settings.logo ? <img className="player-modal-logo" src={settings.logo} alt="" /> : null}<form className="panel selected-player-card player-reveal" onSubmit={sell}><button className="modal-close" type="button" onClick={() => setSelling(null)}>×</button><div className="selected-number-badge">#{selling.auctionNumber}</div><div className="player-image-wrap"><img src={selling.image} alt={selling.name} /></div><div className="player-card-details"><span className="unsold-live-badge">UNSOLD PLAYER</span><h2>{selling.name}</h2><p><strong>Age:</strong> {selling.age || '—'}</p><p>{selling.details}</p><strong className="starting-bid">Base Price: {Number(selling.amount || 0).toLocaleString()} Points</strong><div className="bid-form"><select required value={sale.teamId} onChange={(event) => setSale({ ...sale, teamId: event.target.value })}><option value="">Select team</option>{teams.map((team) => <option value={team._id} key={team._id}>{team.name} — {Number(team.remainingPurse).toLocaleString()} Points</option>)}</select><input required type="number" value={sale.amount} onChange={(event) => setSale({ ...sale, amount: event.target.value })} /><button>Confirm Sold</button></div></div></form></div> : null}
     {celebration ? <div className="player-modal-backdrop"><div className="sold-celebration">{celebration.team?.logo ? <img className="sold-team-backdrop" src={resolveAssetUrl(celebration.team.logo)} alt="" /> : null}<span className="sold-title">SOLD!</span><h2>{celebration.player.name}</h2><p>sold to</p><h1>{celebration.team?.name}</h1><strong>{Number(celebration.amount).toLocaleString()} Points</strong></div></div> : null}
   </main>;
 }
@@ -449,6 +450,7 @@ function SelectedPlayersPage({ refreshCategories, teams }) {
                   <span className="result-status sold">SOLD</span>
                   <h3>{player.name}</h3>
                   <p>{categoryLabels[player.category] || player.category}</p>
+                  <p><strong>Age:</strong> {player.age || '—'}</p>
                   <strong>{player.team || 'No team'} · {Number(player.amount || 0).toLocaleString()} Points</strong>
                   <div className="management-actions">
                     <button type="button" onClick={() => setEditingPlayer(player)}>Edit</button>
@@ -470,6 +472,7 @@ function SelectedPlayersPage({ refreshCategories, teams }) {
             <h2>Edit Player</h2>
             <form className="manual-player-form" onSubmit={savePlayerEdit}>
               <label>Name<input name="name" defaultValue={editingPlayer.name} required /></label>
+              <label>Age<input name="age" type="number" inputMode="numeric" min="1" step="1" defaultValue={editingPlayer.age || ''} /></label>
               <label>Category
                 <select name="category" defaultValue={editingPlayer.category}>
                   <option value="allrounder">All Rounder</option>
@@ -686,6 +689,7 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
                   <div>
                     <span>{mvpMode ? '★ MVP' : categoryLabels[player.category]}</span>
                     <h3>{player.name}</h3>
+                    <p><strong>Age:</strong> {player.age || '—'}</p>
                     <p>{getPlayerRoleDetails(player)}</p>
                     {previousTeam ? <div className="previously-played-badge">🏏 Previously Played In: <strong>{previousTeam}</strong></div> : null}
                     <strong>Base Price: {Number(player.amount || 0).toLocaleString()} Points</strong>
@@ -731,6 +735,7 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
               ? <span className="mvp-live-badge">★ MOST VALUABLE PLAYER ★</span>
               : <span className={`category-live-badge ${currentPlayer.category}`}>★ {categoryLabels[currentPlayer.category]?.toUpperCase()} ★</span>}
               <h2>{currentPlayer.name}</h2>
+              <p><strong>Age:</strong> {currentPlayer.age || '—'}</p>
               <p>{getPlayerRoleDetails(currentPlayer)}</p>
               {(currentPlayer.previouslyPlayedIn || currentPlayer.playedIn) ? <div className="previously-played-badge modal-highlight">🏏 Previously Played In: <strong>{currentPlayer.previouslyPlayedIn || currentPlayer.playedIn}</strong></div> : null}
               <strong className="starting-bid">Base Price: {Number(currentPlayer.amount || 0).toLocaleString()} Points</strong>
