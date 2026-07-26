@@ -882,6 +882,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
 
       <form ref={formRef} className="registration-form" onSubmit={handleSubmit} aria-busy={submitting}>
         <label>Player Name*<input name="name" placeholder=" Name"required /></label>
+        <label>Age*<input name="age" type="number" inputMode="numeric" min="1" step="1" placeholder=" Age" required /></label>
         <label>Phone Number*<input name="phone" type="tel" placeholder=" Phone No." required /></label>
         <label>Previously Played In*<input name="playedIn" placeholder=" Team (if not played write New)" required /></label>
         <label>T-Shirt Size*
@@ -985,6 +986,7 @@ function RegistrationDataPage() {
     if (!normalizedQuery) return registrations;
     return registrations.filter((player) => [
       player.name,
+      player.age,
       player.phone,
       player.tshirtSize,
       player.registrationStatus,
@@ -1033,6 +1035,7 @@ function RegistrationDataPage() {
                   </span>
                 </div>
                 <div className="registration-data-details">
+                  <p><strong>Age:</strong> {player.age || '—'}</p>
                   <p><strong>Phone:</strong> {player.phone || '—'}</p>
                   <p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p>
                   <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn || 'New player'}</p>
@@ -1379,7 +1382,7 @@ function App() {
         <Route path="/register" element={<RegistrationPage onRegistered={loadData} logo={settings.logo} registeredCount={pendingRegistrations.length + categories.reduce((count, category) => count + (category.players?.filter((player) => player.source === 'registration').length || 0), 0)} />} />
         <Route path="/register-form" element={<RegistrationPage onRegistered={loadData} logo={settings.logo} registeredCount={pendingRegistrations.length + categories.reduce((count, category) => count + (category.players?.filter((player) => player.source === 'registration').length || 0), 0)} />} />
         <Route path="/registration-data" element={<RegistrationDataPage />} />
-        <Route path="/approvals" element={<main className="panel approvals-page"><div className="page-heading"><div><span className="eyebrow">APPROVAL PANEL</span><h2>Pending registrations</h2><p>Review player signups and approve them for auction.</p></div><Link className="back-link" to="/">Back to auction</Link></div><section className="pending-registrations-panel"><div className="pending-registrations-header"><div><span className="eyebrow">PENDING</span><h3>Player approvals</h3></div><span className="pending-count-badge">{pendingRegistrations.length}</span></div>{pendingRegistrations.length ? <div className="pending-registrations-list">{pendingRegistrations.map((player) => <article className="pending-registration-card" key={player._id}><div className="pending-registration-main"><h4>{player.name}</h4><p><strong>Phone:</strong> {player.phone || '—'}</p><p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p>{player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}{player.previouslyPlayedIn || player.playedIn ? <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn}</p> : null}{player.details ? <p>{player.details}</p> : null}{player.paymentReceipt ? <p><a href={resolveAssetUrl(player.paymentReceipt)} target="_blank" rel="noreferrer">View payment receipt</a></p> : null}</div><button type="button" onClick={() => approveRegistration(player)}>Approve</button></article>)}</div> : <p className="pending-empty">No pending registrations right now.</p>}</section>{feedback ? <p className="feedback">{feedback}</p> : null}</main>} />
+        <Route path="/approvals" element={<main className="panel approvals-page"><div className="page-heading"><div><span className="eyebrow">APPROVAL PANEL</span><h2>Pending registrations</h2><p>Review player signups and approve them for auction.</p></div><Link className="back-link" to="/">Back to auction</Link></div><section className="pending-registrations-panel"><div className="pending-registrations-header"><div><span className="eyebrow">PENDING</span><h3>Player approvals</h3></div><span className="pending-count-badge">{pendingRegistrations.length}</span></div>{pendingRegistrations.length ? <div className="pending-registrations-list">{pendingRegistrations.map((player) => <article className="pending-registration-card" key={player._id}><div className="pending-registration-main"><h4>{player.name}</h4><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Phone:</strong> {player.phone || '—'}</p><p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p>{player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}{player.previouslyPlayedIn || player.playedIn ? <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn}</p> : null}{player.details ? <p>{player.details}</p> : null}{player.paymentReceipt ? <p><a href={resolveAssetUrl(player.paymentReceipt)} target="_blank" rel="noreferrer">View payment receipt</a></p> : null}</div><button type="button" onClick={() => approveRegistration(player)}>Approve</button></article>)}</div> : <p className="pending-empty">No pending registrations right now.</p>}</section>{feedback ? <p className="feedback">{feedback}</p> : null}</main>} />
         <Route path="/category/:categoryKey" element={<CategoryAuctionPage categories={categories} refreshCategories={loadData} teams={teams} auctionStartAudio={settings.auctionStartAudio} playerSoldAudio={settings.playerSoldAudio} auctionLogo={settings.logo} playerLimitEnabled={settings.playerLimitEnabled} maxPlayersPerTeam={Number(settings.maxPlayersPerTeam || 0)} cardSelectionEnabled={settings.auctionCardSelectionEnabled} />} />
         <Route path="/mvp" element={<CategoryAuctionPage categories={categories} refreshCategories={loadData} teams={teams} auctionStartAudio={settings.auctionStartAudio} playerSoldAudio={settings.playerSoldAudio} auctionLogo={settings.logo} playerLimitEnabled={settings.playerLimitEnabled} maxPlayersPerTeam={Number(settings.maxPlayersPerTeam || 0)} fixedCategoryKey="mvp" mvpMode />} />
         <Route path="/selected" element={<SelectedPlayersPage refreshCategories={loadData} teams={teams} />} />
