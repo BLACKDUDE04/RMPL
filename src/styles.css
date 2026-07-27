@@ -1033,6 +1033,18 @@ button {
   color: #93c5fd;
 }
 
+.register-footer {
+  position: relative;
+  z-index: 1;
+  padding: 22px;
+  color: #789286;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
 .entry-card {
   display: flex;
   flex-direction: column;
