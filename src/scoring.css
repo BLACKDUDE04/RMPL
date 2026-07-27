@@ -99,6 +99,13 @@
   flex-basis: 46px;
 }
 
+.scoring-player-photo.large {
+  width: clamp(108px, 22vw, 170px);
+  height: clamp(108px, 22vw, 170px);
+  flex-basis: clamp(108px, 22vw, 170px);
+  border-width: 3px;
+}
+
 .scoring-player-photo.fallback {
   display: grid;
   place-items: center;
@@ -2712,6 +2719,118 @@
   to { opacity: 0; transform: rotate(var(--angle)) translateY(clamp(-390px, -34vw, -210px)) scale(1); }
 }
 
+.viewer-player-announcement {
+  position: fixed;
+  inset: 0;
+  z-index: 122;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  pointer-events: none;
+  color: white;
+  background: radial-gradient(circle at 50% 42%, rgba(14, 32, 23, 0.5), rgba(3, 8, 11, 0.88));
+  animation: viewer-announcement-screen 0.32s ease both;
+}
+
+.viewer-player-announcement > section {
+  width: min(92vw, 680px);
+  padding: clamp(24px, 5vw, 42px);
+  overflow: hidden;
+  text-align: center;
+  background:
+    radial-gradient(circle at 80% 15%, rgba(248, 200, 75, 0.16), transparent 35%),
+    linear-gradient(145deg, #1c293d, #0d1727);
+  border: 1px solid rgba(248, 200, 75, 0.42);
+  border-radius: 30px;
+  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.58);
+  animation: viewer-player-card 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.viewer-player-announcement.wicket > section {
+  background:
+    radial-gradient(circle at 80% 15%, rgba(255, 101, 106, 0.2), transparent 36%),
+    linear-gradient(145deg, #2c1d2a, #111827);
+  border-color: rgba(255, 101, 106, 0.55);
+}
+
+.viewer-announcement-label {
+  display: inline-block;
+  margin-bottom: 20px;
+  padding: 7px 13px;
+  color: #1f1704;
+  background: var(--cricket-gold);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+}
+
+.viewer-player-announcement.wicket .viewer-announcement-label {
+  color: white;
+  background: var(--cricket-red);
+}
+
+.viewer-announcement-player {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 5vw, 38px);
+  text-align: left;
+}
+
+.viewer-announcement-player .scoring-player-photo {
+  border-color: rgba(248, 200, 75, 0.72);
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.38);
+}
+
+.viewer-player-announcement.wicket .viewer-announcement-player .scoring-player-photo {
+  border-color: rgba(255, 101, 106, 0.75);
+}
+
+.viewer-announcement-player h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 6vw, 3.6rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.viewer-announcement-player p {
+  margin: 11px 0 7px;
+  color: var(--cricket-muted);
+  font-size: clamp(0.85rem, 2.4vw, 1.05rem);
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.viewer-announcement-player strong {
+  color: var(--cricket-gold);
+  font-size: clamp(1rem, 3vw, 1.35rem);
+}
+
+.viewer-player-announcement.wicket .viewer-announcement-player strong {
+  color: #ff9ca0;
+}
+
+.viewer-player-announcement > section > small {
+  display: block;
+  margin-top: 24px;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+@keyframes viewer-announcement-screen {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes viewer-player-card {
+  from { opacity: 0; transform: translateY(28px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (max-width: 980px) {
   .match-centre-grid,
   .scorer-match-grid {
@@ -2828,6 +2947,20 @@
 
   .match-centre-live-count strong {
     font-size: 1.45rem;
+  }
+
+  .viewer-player-announcement {
+    padding: 12px;
+  }
+
+  .viewer-player-announcement > section {
+    padding: 25px 18px;
+    border-radius: 22px;
+  }
+
+  .viewer-announcement-player {
+    flex-direction: column;
+    text-align: center;
   }
 
   .match-leaderboard {
