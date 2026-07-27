@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const XLSX = require('xlsx');
 
 const MATCH_STATUSES = ['scheduled', 'live', 'awaiting_awards', 'completed'];
 const INNINGS_STATUSES = ['ready', 'live', 'completed'];
@@ -1754,6 +1755,116 @@ function statusSortExpression() {
   return { status: 1, scheduledAt: -1, updatedAt: -1 };
 }
 
+function matchExportSheets(matchInput) {
+  const match = plain(matchInput);
+  const view = deriveMatchView(match);
+  const teamA = view.teamA || {};
+  const teamB = view.teamB || {};
+  const manOfMatch = view.awards?.manOfMatch;
+  const bestBowler = view.awards?.bestBowler;
+  const sheets = [{
+    name: 'Match Summary',
+    rows: [{
+      Match: view.title || `${teamA.name || 'Team A'} vs ${teamB.name || 'Team B'}`,
+      Status: view.status || '',
+      Venue: view.venue || '',
+      Scheduled: view.scheduledAt || '',
+      'Team A': teamA.name || '',
+      'Team B': teamB.name || '',
+      Result: view.result?.text || '',
+      Winner: view.result?.winnerTeamName || '',
+      'Man of the Match': manOfMatch?.name || '',
+      'Best Bowler': bestBowler?.name || '',
+      'Overs per Innings': view.oversPerInnings || '',
+      Completed: view.completedAt || ''
+    }]
+  }];
+
+  (view.innings || []).forEach((innings, index) => {
+    const inningsNumber = Number(innings.number || index + 1);
+    const battingTeam = innings.battingTeam?.name
+      || [teamA, teamB].find((team) => sameId(team.teamId, innings.battingTeamId))?.name
+      || `Innings ${inningsNumber}`;
+    sheets.push({
+      name: `I${inningsNumber} Summary`,
+      rows: [{
+        Innings: inningsNumber,
+        Team: battingTeam,
+        Runs: Number(innings.totalRuns || 0),
+        Wickets: Number(innings.wickets || 0),
+        Overs: innings.overs || '0.0',
+        Extras: Number(innings.extras?.total || 0),
+        Target: innings.target || '',
+        Status: innings.status || ''
+      }]
+    });
+    sheets.push({
+      name: `I${inningsNumber} Batting`,
+      rows: (innings.battingScorecard || []).map((player, position) => ({
+        Position: Number(player.appearanceOrder ?? position) + 1,
+        Player: player.name || '',
+        Status: player.dismissal || (player.isOut ? 'Out' : 'Not out'),
+        Runs: Number(player.runs || 0),
+        Balls: Number(player.balls || 0),
+        Fours: Number(player.fours || 0),
+        Sixes: Number(player.sixes || 0),
+        'Strike Rate': Number(player.strikeRate || 0)
+      }))
+    });
+    sheets.push({
+      name: `I${inningsNumber} Bowling`,
+      rows: (innings.bowlingScorecard || []).map((player) => ({
+        Player: player.name || '',
+        Overs: player.overs || oversFromBalls(player.balls),
+        Maidens: Number(player.maidens || 0),
+        Runs: Number(player.runs || 0),
+        Wickets: Number(player.wickets || 0),
+        Wides: Number(player.wides || 0),
+        'No Balls': Number(player.noBalls || 0),
+        Economy: Number(player.economy || 0)
+      }))
+    });
+    sheets.push({
+      name: `I${inningsNumber} Deliveries`,
+      rows: (innings.deliveries || []).map((delivery) => ({
+        Ball: delivery.displayBall || delivery.overLabel || '',
+        Striker: delivery.striker?.name || delivery.strikerName || '',
+        'Non-striker': delivery.nonStriker?.name || delivery.nonStrikerName || '',
+        Bowler: delivery.bowler?.name || delivery.bowlerName || '',
+        'Bat Runs': Number(delivery.runsOffBat || 0),
+        Wides: Number(delivery.extras?.wide || 0),
+        'No Balls': Number(delivery.extras?.noBall || 0),
+        Byes: Number(delivery.extras?.bye || 0),
+        'Leg Byes': Number(delivery.extras?.legBye || 0),
+        Penalty: Number(delivery.extras?.penalty || 0),
+        Total: Number(delivery.totalRuns || 0),
+        Wicket: delivery.wicket ? 'Yes' : 'No',
+        'Dismissed Batter': delivery.wicket?.dismissedBatterName || '',
+        'Dismissal Type': delivery.wicket?.kind || '',
+        Commentary: commentaryTextForExport(delivery)
+      }))
+    });
+  });
+  return sheets;
+}
+
+function commentaryTextForExport(delivery) {
+  if (delivery.commentary || delivery.note) return delivery.commentary || delivery.note;
+  const bowler = delivery.bowler?.name || delivery.bowlerName || 'Bowler';
+  const striker = delivery.striker?.name || delivery.strikerName || 'Batter';
+  if (delivery.wicket) return `${bowler} to ${striker} - wicket (${delivery.wicket.kind || 'dismissed'})`;
+  return `${bowler} to ${striker} - ${Number(delivery.totalRuns || 0)} runs`;
+}
+
+function createMatchExportWorkbook(matchInput) {
+  const workbook = XLSX.utils.book_new();
+  matchExportSheets(matchInput).forEach(({ name, rows }) => {
+    const sheet = XLSX.utils.json_to_sheet(rows.length ? rows : [{ Message: 'No data recorded' }]);
+    XLSX.utils.book_append_sheet(workbook, sheet, name.slice(0, 31));
+  });
+  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+}
+
 function registerScoringRoutes(app, {
   mongoose,
   Team,
@@ -1989,6 +2100,21 @@ function registerScoringRoutes(app, {
     if (!match) throw new ScoringError('Match not found', 404);
     res.setHeader('Cache-Control', 'no-store');
     res.json({ match: deriveMatchView(match) });
+  }));
+
+  app.get('/api/matches/:id/export', route(async (req, res) => {
+    const match = await findHydratedMatchById(req.params.id);
+    if (!match) throw new ScoringError('Match not found', 404);
+    const safeTitle = String(match.title || 'rmpl-match')
+      .trim()
+      .replace(/[^a-z0-9]+/gi, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 70) || 'rmpl-match';
+    const buffer = createMatchExportWorkbook(match);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeTitle}-details.xlsx"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(buffer);
   }));
 
   app.patch('/api/matches/:id', authRoute(async (req, res) => {
@@ -2273,6 +2399,7 @@ module.exports = {
   buildInningsScorecard,
   buildResult,
   computePostDeliveryState,
+  createMatchExportWorkbook,
   createSchemas,
   deriveCachedMatchListView,
   deriveAutomaticAwards,
@@ -2281,6 +2408,7 @@ module.exports = {
   hydrateMatchReferences,
   issueScorerToken,
   markAutoStateAfterCorrection,
+  matchExportSheets,
   normalizeDeliveryInput,
   oversFromBalls,
   registerScoringRoutes,

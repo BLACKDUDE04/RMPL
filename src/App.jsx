@@ -235,6 +235,7 @@ function MatchRecordsPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [exportedIds, setExportedIds] = useState(() => new Set());
 
   const loadMatches = async () => {
     setLoading(true);
@@ -254,14 +255,27 @@ function MatchRecordsPage() {
   useEffect(() => { loadMatches(); }, []);
   useLiveDataRefresh(loadMatches);
 
+  const exportMatch = (match) => {
+    const matchId = match._id || match.id;
+    window.open(`${API}/matches/${matchId}/export`, '_blank', 'noopener,noreferrer');
+    setExportedIds((current) => new Set([...current, matchId]));
+    setFeedback('Match Excel export started. Keep the downloaded file as the permanent scoring backup.');
+  };
+
   const deleteMatch = async (match) => {
     if (!password) {
       setFeedback('Enter the scorer password before deleting a match record.');
       return;
     }
     const label = match.title || `${match.teamA?.name || 'Team A'} vs ${match.teamB?.name || 'Team B'}`;
+    const matchId = match._id || match.id;
+    if (!exportedIds.has(matchId)) {
+      exportMatch(match);
+      setFeedback(`Excel export for "${label}" started. After it downloads, click Delete record again to confirm permanent deletion.`);
+      return;
+    }
     if (!window.confirm(`Delete "${label}" permanently? All innings, scores, and ball history for this match will be removed.`)) return;
-    setDeletingId(match._id || match.id);
+    setDeletingId(matchId);
     setFeedback('');
     try {
       const response = await fetch(`${API}/matches/${match._id || match.id}`, {
@@ -301,17 +315,25 @@ function MatchRecordsPage() {
           const matchId = match._id || match.id;
           const teamA = match.teamA?.name || 'Team A';
           const teamB = match.teamB?.name || 'Team B';
+          const manOfMatch = match.awards?.manOfMatch || match.awards?.manOfTheMatch;
           return <article key={matchId} className="match-record-row">
             <div>
               <span className={`match-record-status ${String(match.status || '').toLowerCase()}`}>{String(match.status || 'scheduled').replaceAll('_', ' ')}</span>
               <h3>{match.title || `${teamA} vs ${teamB}`}</h3>
               <p>{teamA} vs {teamB} · {match.oversPerInnings || '—'} overs</p>
               <small>{match.scheduledAt ? new Date(match.scheduledAt).toLocaleString() : 'Schedule not set'}</small>
+              {match.result?.text ? <p className="match-record-result"><strong>Result:</strong> {match.result.text}</p> : null}
+              {manOfMatch ? <p className="match-record-award"><strong>Man of the Match:</strong> {manOfMatch.name || 'Player'}</p> : null}
+              {match.inningsSummaries?.length ? <div className="match-record-innings">
+                {match.inningsSummaries.map((innings, index) => <span key={innings.number || index}><strong>{innings.battingTeam?.name || `Innings ${index + 1}`}</strong>{Number(innings.totalRuns || 0)}/{Number(innings.wickets || 0)} <small>({innings.overs || '0.0'} ov)</small></span>)}
+              </div> : null}
             </div>
             <div className="match-record-actions">
+              <Link to={`/matches/${matchId}`}>Viewer scorecard</Link>
               <Link to={`/scorer/${matchId}`}>View in scorer</Link>
+              <button className="ghost" type="button" onClick={() => exportMatch(match)}>{exportedIds.has(matchId) ? 'Export again' : 'Export Excel'}</button>
               <button className="danger-button" type="button" disabled={deletingId === matchId} onClick={() => deleteMatch(match)}>
-                {deletingId === matchId ? 'Deleting...' : 'Delete record'}
+                {deletingId === matchId ? 'Deleting...' : exportedIds.has(matchId) ? 'Delete record' : 'Export before delete'}
               </button>
             </div>
           </article>;

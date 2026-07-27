@@ -580,6 +580,60 @@ function ViewerPlayerAnnouncement({ announcement }) {
   );
 }
 
+function useWinnerCelebration(match) {
+  const [winner, setWinner] = useState(null);
+  const baselineRef = useRef({ matchId: '', complete: false });
+  const matchId = idOf(match);
+  const complete = isCompleteMatch(match);
+
+  useEffect(() => {
+    if (!matchId) return undefined;
+    const previous = baselineRef.current;
+    if (previous.matchId !== matchId) {
+      baselineRef.current = { matchId, complete };
+      setWinner(null);
+      return undefined;
+    }
+    baselineRef.current = { matchId, complete };
+    if (previous.complete || !complete) return undefined;
+
+    const winnerTeamId = idOf(match?.result?.winnerTeamId);
+    const winningTeam = [teamFromMatch(match, 'teamA'), teamFromMatch(match, 'teamB')]
+      .find((team) => idOf(team) === winnerTeamId);
+    setWinner({
+      key: `${matchId}:${match?.revision || Date.now()}`,
+      team: winningTeam,
+      tie: Boolean(match?.result?.tie),
+      result: match?.result?.text || (winningTeam ? `${textOf(winningTeam.name)} won` : 'Match tied'),
+      manOfMatch: match?.awards?.manOfMatch || match?.awards?.manOfTheMatch || match?.manOfMatch
+    });
+    const timer = window.setTimeout(() => setWinner(null), 7200);
+    return () => window.clearTimeout(timer);
+  }, [complete, matchId, match?.revision]);
+
+  return winner;
+}
+
+function WinnerCelebration({ winner }) {
+  if (!winner) return null;
+  return (
+    <div className="winner-celebration" role="status" aria-live="assertive">
+      <section key={winner.key}>
+        <span className="cricket-kicker">{winner.tie ? 'MATCH COMPLETE' : 'MATCH WINNER'}</span>
+        {winner.team ? <TeamMark team={winner.team} size="large" /> : <span className="winner-trophy" aria-hidden="true">★</span>}
+        <h2>{winner.tie ? 'Match tied' : textOf(winner.team?.name, 'Winner')}</h2>
+        <p>{winner.result}</p>
+        {winner.manOfMatch ? (
+          <article>
+            <PlayerPhoto player={winner.manOfMatch} size="medium" />
+            <span><small>MAN OF THE MATCH</small><strong>{playerName(winner.manOfMatch)}</strong></span>
+          </article>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
 function useScoringLiveRefresh(refresh, {
   matchId = '',
   connectStream = true,
@@ -705,6 +759,7 @@ function MatchCard({ match, compact = false, scorer = false }) {
   const teamB = teamFromMatch(match, 'teamB');
   const link = scorer ? `/scorer/${match._id || match.id}` : `/matches/${match._id || match.id}`;
   const result = match.result?.summary || match.result?.text || match.result || match.resultText;
+  const manOfMatch = match.awards?.manOfMatch || match.awards?.manOfTheMatch || match.manOfMatch;
 
   return (
     <article className={`cricket-match-card ${compact ? 'compact' : ''}`}>
@@ -727,6 +782,7 @@ function MatchCard({ match, compact = false, scorer = false }) {
         <strong>{scoreText(inningsForTeam(match, teamB), false)}</strong>
       </div>
       {result ? <p className="cricket-card-result">{textOf(result)}</p> : null}
+      {isCompleteMatch(match) && manOfMatch ? <p className="cricket-card-award"><span>★</span> Man of the Match: <strong>{playerName(manOfMatch)}</strong></p> : null}
       <Link className="cricket-view-button" to={link}>{scorer ? 'Open scorer' : 'View more'} <span aria-hidden="true">→</span></Link>
     </article>
   );
@@ -1199,11 +1255,14 @@ function AwardsPanel({ match }) {
   if (!isCompleteMatch(match) && !match.awards) return null;
   const manOfMatch = match.awards?.manOfMatch || match.awards?.manOfTheMatch || match.manOfMatch;
   const bestBowler = match.awards?.bestBowler || match.bestBowler;
+  const winningTeam = [teamFromMatch(match, 'teamA'), teamFromMatch(match, 'teamB')]
+    .find((team) => idOf(team) === idOf(match?.result?.winnerTeamId));
   if (!manOfMatch && !bestBowler) return null;
   return (
     <section className="match-awards">
       <header><span className="cricket-kicker">MATCH HONOURS</span><h2>Stars of the match</h2></header>
       <div>
+        {winningTeam ? <article className="match-winning-team"><TeamMark team={winningTeam} size="large" /><small>Match Winner</small><strong>{textOf(winningTeam.name)}</strong><p>{match?.result?.text || ''}</p></article> : null}
         {manOfMatch ? <article><span aria-hidden="true">★</span><small>Man of the Match</small><strong>{playerName(manOfMatch)}</strong>{manOfMatch.image || manOfMatch.player?.image ? <img src={resolveAssetUrl(manOfMatch.image || manOfMatch.player.image)} alt="" /> : null}</article> : null}
         {bestBowler ? <article><span aria-hidden="true">W</span><small>Best Bowler</small><strong>{playerName(bestBowler)}</strong>{bestBowler.image || bestBowler.player?.image ? <img src={resolveAssetUrl(bestBowler.image || bestBowler.player.image)} alt="" /> : null}</article> : null}
       </div>
@@ -1254,11 +1313,13 @@ export function MatchDetailsPage({ logo, backgroundImage }) {
   const selectedInnings = innings[activeInnings] || innings[innings.length - 1] || null;
   const celebration = useDeliveryCelebration(match);
   const playerAnnouncement = useViewerPlayerAnnouncements(match);
+  const winnerCelebration = useWinnerCelebration(match);
 
   return (
     <CricketShell logo={logo} backgroundImage={backgroundImage}>
       <DeliveryCelebration celebration={celebration?.type === 'wicket' ? null : celebration} />
       <ViewerPlayerAnnouncement announcement={playerAnnouncement} />
+      <WinnerCelebration winner={winnerCelebration} />
       <main className="cricket-page match-detail-page">
         <Link className="cricket-back-link" to="/matches">← All matches</Link>
         {loading ? <ScoreLoading /> : null}
@@ -2333,10 +2394,12 @@ function ScorerMatchConsole({ logo, backgroundImage, session }) {
     submitDelivery(delivery);
   };
   const celebration = useDeliveryCelebration(match);
+  const winnerCelebration = useWinnerCelebration(match);
 
   return (
     <CricketShell logo={logo} backgroundImage={backgroundImage} scorer onLogout={guardedLogout}>
       <DeliveryCelebration celebration={celebration} />
+      <WinnerCelebration winner={winnerCelebration} />
       <NextBowlerPopup
         match={match}
         innings={innings}
