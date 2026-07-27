@@ -1031,6 +1031,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
           </div>
         ) : null}
         {feedback ? <p className="feedback">{feedback}</p> : null}
+        <footer className="register-footer">Raipur Malayalee Premier League · Official scoring</footer>
       </form>
 
       {registrationSuccess ? (
