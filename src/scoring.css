@@ -402,19 +402,6 @@
   text-align: center;
 }
 
-.cricket-card-award {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0 0;
-  color: #f8e6a3;
-  font-size: 0.78rem;
-}
-
-.cricket-card-award > span {
-  color: var(--cricket-gold);
-}
-
 .cricket-view-button {
   display: flex;
   align-items: center;
@@ -2832,92 +2819,6 @@
   font-weight: 850;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-}
-
-.winner-celebration {
-  position: fixed;
-  inset: 0;
-  z-index: 126;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-  pointer-events: none;
-  color: white;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(248, 200, 75, 0.24), transparent 38%),
-    rgba(3, 8, 17, 0.9);
-  animation: viewer-announcement-screen 0.35s ease both;
-}
-
-.winner-celebration > section {
-  display: grid;
-  width: min(92vw, 640px);
-  justify-items: center;
-  padding: clamp(30px, 6vw, 52px);
-  text-align: center;
-  background:
-    radial-gradient(circle at 50% 0, rgba(248, 200, 75, 0.2), transparent 42%),
-    linear-gradient(145deg, #25334a, #0d1727);
-  border: 2px solid rgba(248, 200, 75, 0.58);
-  border-radius: 32px;
-  box-shadow: 0 34px 110px rgba(0, 0, 0, 0.66);
-  animation: viewer-player-card 0.62s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.winner-celebration .cricket-team-mark,
-.winner-celebration .cricket-team-fallback {
-  margin: 22px 0 16px;
-  box-shadow: 0 14px 42px rgba(248, 200, 75, 0.28);
-}
-
-.winner-trophy {
-  margin: 20px 0 10px;
-  color: var(--cricket-gold);
-  font-size: 5rem;
-}
-
-.winner-celebration h2 {
-  margin: 0;
-  font-size: clamp(2.1rem, 8vw, 4.6rem);
-  letter-spacing: -0.05em;
-  line-height: 1;
-}
-
-.winner-celebration > section > p {
-  margin: 12px 0 22px;
-  color: #f8e6a3;
-  font-size: clamp(1rem, 3vw, 1.3rem);
-  font-weight: 800;
-}
-
-.winner-celebration article {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: min(100%, 310px);
-  padding: 12px 18px;
-  text-align: left;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(248, 200, 75, 0.24);
-  border-radius: 18px;
-}
-
-.winner-celebration article span {
-  display: grid;
-  gap: 3px;
-}
-
-.winner-celebration article small {
-  color: var(--cricket-gold);
-  font-size: 0.65rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
-}
-
-.match-awards .match-winning-team p {
-  margin: 6px 0 0;
-  color: var(--cricket-muted);
-  font-size: 0.78rem;
 }
 
 @keyframes viewer-announcement-screen {
