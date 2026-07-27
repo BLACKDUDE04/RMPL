@@ -5,7 +5,8 @@ const API_ORIGIN = String(import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const API = `${API_ORIGIN}/api`;
 const AUCTION_SOUND_DURATION_MS = 5000;
 const SOLD_SOUND_DURATION_MS = 5000;
-const ROUTE_LOADING_DURATION_MS = 1500;
+const LIVE_DATA_POLL_INTERVAL_MS = 2000;
+const LIVE_DATA_FALLBACK_DELAY_MS = 3000;
 const LIVE_DATA_CHANGED_EVENT = 'rmpl-live-data-changed';
 
 function useLiveDataRefresh(refresh) {
@@ -1093,69 +1094,179 @@ function App() {
   const [settingsFeedback, setSettingsFeedback] = useState('');
   const [routeLoading, setRouteLoading] = useState(true);
   const backendVersionRef = useRef(null);
+  const loadDataPromiseRef = useRef(null);
+  const loadDataQueuedRef = useRef(false);
 
-  const loadData = async () => {
-    const [categoryResponse, settingsResponse, teamsResponse, pendingResponse] = await Promise.all([
-      fetch(`${API}/categories`),
-      fetch(`${API}/settings`),
-      fetch(`${API}/teams`),
-      fetch(`${API}/players/registrations/pending`)
-    ]);
+  const loadData = (queueIfBusy = true) => {
+    if (loadDataPromiseRef.current) {
+      if (queueIfBusy) loadDataQueuedRef.current = true;
+      return loadDataPromiseRef.current;
+    }
 
-    const categoriesData = await categoryResponse.json();
-    const settingsData = await settingsResponse.json();
-    const teamsData = await teamsResponse.json();
-    const pendingData = await pendingResponse.json();
-    setCategories(categoriesData.categories || []);
-    setSettings(settingsData);
-    setPlayerLimitEnabled(Boolean(settingsData.playerLimitEnabled));
-    setAuctionCardSelectionEnabled(Boolean(settingsData.auctionCardSelectionEnabled));
-    setTeams(teamsData.teams || []);
-    setPendingRegistrations(pendingData.registrations || []);
+    let request;
+    request = (async () => {
+      const response = await fetch(`${API}/bootstrap`, { cache: 'no-store' });
+      let data;
+
+      if (response.status === 404) {
+        const [categoryResponse, settingsResponse, teamsResponse, pendingResponse, versionResponse] = await Promise.all([
+          fetch(`${API}/categories`),
+          fetch(`${API}/settings`),
+          fetch(`${API}/teams`),
+          fetch(`${API}/players/registrations/pending`),
+          fetch(`${API}/data-version`, { cache: 'no-store' })
+        ]);
+        if (![categoryResponse, settingsResponse, teamsResponse, pendingResponse].every((item) => item.ok)) {
+          throw new Error('Unable to load auction data');
+        }
+        const [categoriesData, settingsData, teamsData, pendingData, versionData] = await Promise.all([
+          categoryResponse.json(),
+          settingsResponse.json(),
+          teamsResponse.json(),
+          pendingResponse.json(),
+          versionResponse.ok ? versionResponse.json() : Promise.resolve({})
+        ]);
+        data = {
+          version: versionData.version,
+          categories: categoriesData.categories,
+          settings: settingsData,
+          teams: teamsData.teams,
+          pendingRegistrations: pendingData.registrations
+        };
+      } else {
+        data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Unable to load auction data');
+      }
+
+      const nextSettings = data.settings || {};
+      setCategories(data.categories || []);
+      setSettings(nextSettings);
+      setPlayerLimitEnabled(Boolean(nextSettings.playerLimitEnabled));
+      setAuctionCardSelectionEnabled(Boolean(nextSettings.auctionCardSelectionEnabled));
+      setTeams(data.teams || []);
+      setPendingRegistrations(data.pendingRegistrations || []);
+
+      const nextVersion = Number(data.version);
+      if (Number.isFinite(nextVersion)) {
+        const knownVersion = Number(backendVersionRef.current || 0);
+        if (knownVersion > nextVersion) {
+          loadDataQueuedRef.current = true;
+        } else {
+          backendVersionRef.current = nextVersion;
+        }
+      }
+      return true;
+    })()
+      .catch((error) => {
+        console.error('Auction data refresh failed:', error);
+        return false;
+      })
+      .finally(() => {
+        if (loadDataPromiseRef.current === request) {
+          loadDataPromiseRef.current = null;
+        }
+        if (loadDataQueuedRef.current) {
+          loadDataQueuedRef.current = false;
+          loadData(false);
+        }
+      });
+
+    loadDataPromiseRef.current = request;
+    return request;
   };
 
   useEffect(() => {
-    loadData();
+    let active = true;
+    loadData(false).finally(() => {
+      if (active) setRouteLoading(false);
+    });
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
     let active = true;
+    let checkInFlight = false;
+    let pollInterval = null;
+    let fallbackTimer = null;
+    let eventSource = null;
+
+    const handleBackendVersion = (version) => {
+      const nextVersion = Number(version);
+      if (!active || !Number.isFinite(nextVersion)) return;
+
+      if (backendVersionRef.current === null) {
+        backendVersionRef.current = nextVersion;
+        return;
+      }
+      if (backendVersionRef.current === nextVersion) return;
+
+      backendVersionRef.current = nextVersion;
+      window.dispatchEvent(new Event(LIVE_DATA_CHANGED_EVENT));
+      loadData();
+    };
 
     const checkForBackendChanges = async () => {
+      if (checkInFlight || document.hidden) return;
+      checkInFlight = true;
       try {
         const response = await fetch(`${API}/data-version`, { cache: 'no-store' });
         if (!response.ok) return;
         const { version } = await response.json();
-        if (!active) return;
-
-        if (backendVersionRef.current === null) {
-          backendVersionRef.current = version;
-        } else if (backendVersionRef.current !== version) {
-          await loadData();
-          backendVersionRef.current = version;
-          window.dispatchEvent(new Event(LIVE_DATA_CHANGED_EVENT));
-        }
+        handleBackendVersion(version);
       } catch {
         // Leave the current page usable while the backend is unavailable.
+      } finally {
+        checkInFlight = false;
       }
     };
 
-    checkForBackendChanges();
-    const interval = window.setInterval(checkForBackendChanges, 2000);
+    const stopPolling = () => {
+      if (pollInterval) {
+        window.clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    };
+
+    const startPolling = () => {
+      if (pollInterval) return;
+      checkForBackendChanges();
+      pollInterval = window.setInterval(checkForBackendChanges, LIVE_DATA_POLL_INTERVAL_MS);
+    };
+
+    if (typeof window.EventSource === 'function') {
+      eventSource = new window.EventSource(`${API}/live-events`);
+      eventSource.addEventListener('version', (event) => {
+        try {
+          handleBackendVersion(JSON.parse(event.data).version);
+        } catch {
+          // A malformed event should not stop fallback refreshes.
+        }
+      });
+      eventSource.onopen = () => {
+        if (fallbackTimer) {
+          window.clearTimeout(fallbackTimer);
+          fallbackTimer = null;
+        }
+        stopPolling();
+      };
+      eventSource.onerror = startPolling;
+      fallbackTimer = window.setTimeout(startPolling, LIVE_DATA_FALLBACK_DELAY_MS);
+    } else {
+      startPolling();
+    }
+
     window.addEventListener('focus', checkForBackendChanges);
 
     return () => {
       active = false;
-      window.clearInterval(interval);
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
+      stopPolling();
+      eventSource?.close();
       window.removeEventListener('focus', checkForBackendChanges);
     };
   }, []);
-
-  useEffect(() => {
-    setRouteLoading(true);
-    const loadingTimer = setTimeout(() => setRouteLoading(false), ROUTE_LOADING_DURATION_MS);
-    return () => clearTimeout(loadingTimer);
-  }, [location.pathname]);
 
   const categorySummary = useMemo(() => {
     return categories.map((item) => ({
@@ -1305,7 +1416,7 @@ function App() {
 
   return (
     <div className="app-shell" style={{ backgroundImage: settings.backgroundImage ? `url(${resolveAssetUrl(settings.backgroundImage)})` : 'none' }}>
-      {routeLoading ? (
+      {routeLoading && !isStandaloneRegistrationRoute ? (
         <div className="rmpl-loader" role="status" aria-live="polite" aria-label="Loading RMPL">
           <div className="rmpl-spinner">
             {settings.logo ? (
