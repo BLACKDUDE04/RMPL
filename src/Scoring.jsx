@@ -440,6 +440,146 @@ function DeliveryCelebration({ celebration }) {
   );
 }
 
+const ordinal = (value) => {
+  const number = Number(value);
+  const remainder = number % 100;
+  if (remainder >= 11 && remainder <= 13) return `${number}th`;
+  if (number % 10 === 1) return `${number}st`;
+  if (number % 10 === 2) return `${number}nd`;
+  if (number % 10 === 3) return `${number}rd`;
+  return `${number}th`;
+};
+
+const playerFromMatch = (match, playerId) => {
+  const targetId = idOf(playerId);
+  return [match?.teamA, match?.teamB, ...(match?.teams || [])]
+    .flatMap((team) => team?.players || [])
+    .find((player) => idOf(player) === targetId);
+};
+
+function useViewerPlayerAnnouncements(match) {
+  const [announcement, setAnnouncement] = useState(null);
+  const baselineRef = useRef({ matchId: '', inningsId: '', activeIds: [], wicketKey: '' });
+  const pendingWicketRef = useRef(false);
+  const queueRef = useRef([]);
+  const displayingRef = useRef(false);
+  const timerRef = useRef(null);
+  const showNextRef = useRef(null);
+
+  showNextRef.current = () => {
+    const next = queueRef.current.shift();
+    if (!next) {
+      displayingRef.current = false;
+      setAnnouncement(null);
+      return;
+    }
+    displayingRef.current = true;
+    setAnnouncement(next);
+    timerRef.current = window.setTimeout(() => {
+      setAnnouncement(null);
+      displayingRef.current = false;
+      showNextRef.current?.();
+    }, next.duration || 3600);
+  };
+
+  const enqueue = (...items) => {
+    queueRef.current.push(...items.filter(Boolean));
+    if (!displayingRef.current) showNextRef.current?.();
+  };
+
+  const innings = currentInningsOf(match);
+  const matchId = idOf(match);
+  const inningsId = idOf(innings) || String(match?.currentInningsIndex ?? '');
+  const strikerId = currentParticipantId(match, innings, 'striker');
+  const nonStrikerId = currentParticipantId(match, innings, 'nonStriker');
+  const activeIds = [strikerId, nonStrikerId].filter(Boolean);
+  const latest = latestMatchDelivery(match);
+  const wicket = wicketDetails(latest);
+  const wicketKey = wicket && wicket.countsAsWicket !== false
+    ? `${idOf(latest) || latest?.sequence || deliveryList(innings, match).length}:${idOf(wicket.dismissedBatterId || wicket.dismissedBatter)}`
+    : '';
+
+  useEffect(() => {
+    if (!matchId || !innings) return;
+    const previous = baselineRef.current;
+    if (previous.matchId !== matchId || previous.inningsId !== inningsId) {
+      baselineRef.current = { matchId, inningsId, activeIds, wicketKey };
+      pendingWicketRef.current = false;
+      return;
+    }
+
+    const announcements = [];
+    if (wicketKey && wicketKey !== previous.wicketKey) {
+      const dismissedId = idOf(wicket?.dismissedBatterId || wicket?.dismissedBatter);
+      const scorecardRow = battingRows(innings).find((row) => playerId(row) === dismissedId);
+      const dismissed = { ...playerFromMatch(match, dismissedId), ...scorecardRow };
+      announcements.push({
+        type: 'wicket',
+        key: `out:${wicketKey}`,
+        player: dismissed,
+        title: `${playerName(dismissed, 'Batter')} is out`,
+        detail: textOf(wicket?.kind, 'Dismissed').replace(/\b\w/g, (letter) => letter.toUpperCase()),
+        stats: `${numberOf(scorecardRow?.runs)} runs · ${numberOf(scorecardRow?.balls)} balls`,
+        duration: 3200
+      });
+      pendingWicketRef.current = true;
+    }
+
+    const previousIds = new Set(previous.activeIds);
+    const incomingId = activeIds.find((playerIdValue) => !previousIds.has(playerIdValue));
+    if (incomingId && pendingWicketRef.current) {
+      const rows = battingRows(innings);
+      const scorecardRow = rows.find((row) => playerId(row) === incomingId);
+      const incoming = { ...playerFromMatch(match, incomingId), ...scorecardRow };
+      const rowIndex = rows.findIndex((row) => playerId(row) === incomingId);
+      const position = Number.isInteger(scorecardRow?.appearanceOrder)
+        ? Number(scorecardRow.appearanceOrder) + 1
+        : rowIndex + 1;
+      announcements.push({
+        type: 'incoming',
+        key: `incoming:${inningsId}:${incomingId}:${position}`,
+        player: incoming,
+        title: playerName(incoming, 'New batter'),
+        detail: incoming.category || incoming.battingStyle || 'Batter',
+        stats: position > 0 ? `Coming in at ${ordinal(position)}` : 'Next batter',
+        duration: 4600
+      });
+      pendingWicketRef.current = false;
+    }
+
+    baselineRef.current = { matchId, inningsId, activeIds, wicketKey };
+    if (announcements.length) enqueue(...announcements);
+  }, [match?.revision, matchId, inningsId, strikerId, nonStrikerId, wicketKey]);
+
+  useEffect(() => () => {
+    if (timerRef.current) window.clearTimeout(timerRef.current);
+    queueRef.current = [];
+  }, []);
+
+  return announcement;
+}
+
+function ViewerPlayerAnnouncement({ announcement }) {
+  if (!announcement) return null;
+  const player = announcement.player || {};
+  return (
+    <div className={`viewer-player-announcement ${announcement.type}`} role="status" aria-live="assertive">
+      <section key={announcement.key}>
+        <span className="viewer-announcement-label">{announcement.type === 'wicket' ? 'WICKET' : 'NEW BATTER'}</span>
+        <div className="viewer-announcement-player">
+          <PlayerPhoto player={player} size="large" />
+          <div>
+            <h2>{announcement.title}</h2>
+            <p>{announcement.detail}</p>
+            <strong>{announcement.stats}</strong>
+          </div>
+        </div>
+        {announcement.type === 'incoming' ? <small>Now walking to the crease</small> : <small>The next batter will be announced shortly</small>}
+      </section>
+    </div>
+  );
+}
+
 function useScoringLiveRefresh(refresh, {
   matchId = '',
   connectStream = true,
@@ -1203,10 +1343,12 @@ export function MatchDetailsPage({ logo, backgroundImage }) {
   }, [matchId, innings.length, match?.currentInningsIndex]);
   const selectedInnings = innings[activeInnings] || innings[innings.length - 1] || null;
   const celebration = useDeliveryCelebration(match);
+  const playerAnnouncement = useViewerPlayerAnnouncements(match);
 
   return (
     <CricketShell logo={logo} backgroundImage={backgroundImage}>
-      <DeliveryCelebration celebration={celebration} />
+      <DeliveryCelebration celebration={celebration?.type === 'wicket' ? null : celebration} />
+      <ViewerPlayerAnnouncement announcement={playerAnnouncement} />
       <main className="cricket-page match-detail-page">
         <Link className="cricket-back-link" to="/matches">← All matches</Link>
         {loading ? <ScoreLoading /> : null}
