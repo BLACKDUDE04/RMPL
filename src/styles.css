@@ -1036,10 +1036,13 @@ button {
 .register-footer {
   position: relative;
   z-index: 1;
+  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
   padding: 22px;
-  color: #789286;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-  font-size: 0.75rem;
+  color: #ffffff;
+  border-top: 2px solid rgba(255, 255, 255, 0.06);
+  font-size: 1rem;
   letter-spacing: 0.1em;
   text-align: center;
   text-transform: uppercase;
