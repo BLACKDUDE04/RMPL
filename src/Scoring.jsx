@@ -618,7 +618,7 @@ function CricketShell({ logo, backgroundImage, scorer = false, onLogout, childre
         </nav>
       </header>
       {children}
-      <footer className="cricket-footer">Raipur Malayalee Premier League · Official scoring</footer>
+      <footer className="cricket-footer">Raipur Malayalee Premier League · Official scoring<p>designed by KVM</p> </footer>
     </div>
   );
 }
