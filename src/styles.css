@@ -3511,6 +3511,37 @@ button {
   color: #64748b;
 }
 
+.match-record-row .match-record-result {
+  margin-top: 9px;
+  color: #166534;
+}
+
+.match-record-row .match-record-award {
+  margin-top: 4px;
+  color: #92400e;
+}
+
+.match-record-innings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.match-record-innings > span {
+  display: grid;
+  gap: 2px;
+  min-width: 145px;
+  padding: 8px 10px;
+  color: #0f172a;
+  background: #f1f5f9;
+  border-radius: 9px;
+}
+
+.match-record-innings > span strong {
+  font-size: 0.75rem;
+}
+
 .match-record-status {
   display: inline-block;
   padding: 4px 8px;
@@ -3537,6 +3568,7 @@ button {
 .match-record-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   flex: 0 0 auto;
   gap: 10px;
 }

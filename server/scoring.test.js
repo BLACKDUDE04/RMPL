@@ -17,6 +17,7 @@ const {
   hydrateMatchReferences,
   issueScorerToken,
   markAutoStateAfterCorrection,
+  matchExportSheets,
   normalizeDeliveryInput,
   oversFromBalls,
   replayInnings,
@@ -545,4 +546,31 @@ test('scorer passwords are one-way hashed and token rotation invalidates old ses
     verifyScorerToken(session.token, { storedHash: rotatedHash, fallbackPin: '', configured: true }),
     false
   );
+});
+
+test('match export contains summary, innings, batting, bowling, and delivery data', () => {
+  const match = matchFixture();
+  match.status = 'completed';
+  match.title = 'RMPL Final';
+  match.innings = [inningsFixture(1, 'team-a', [
+    ball(1, { runsOffBat: 4 }),
+    ball(2, {
+      wicket: { kind: 'bowled', dismissedBatterId: 'a1' }
+    })
+  ])];
+  const sheets = matchExportSheets(match);
+  const names = sheets.map((sheet) => sheet.name);
+
+  assert.deepEqual(names, [
+    'Match Summary',
+    'I1 Summary',
+    'I1 Batting',
+    'I1 Bowling',
+    'I1 Deliveries'
+  ]);
+  assert.equal(sheets[0].rows[0].Match, 'RMPL Final');
+  assert.equal(sheets[1].rows[0].Runs, 4);
+  assert.equal(sheets[2].rows[0].Player, 'A One');
+  assert.equal(sheets[3].rows[0].Player, 'B One');
+  assert.equal(sheets[4].rows[1].Wicket, 'Yes');
 });
