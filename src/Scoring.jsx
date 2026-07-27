@@ -592,6 +592,94 @@ function MatchCard({ match, compact = false, scorer = false }) {
   );
 }
 
+function buildTeamLeaderboard(matches = []) {
+  const teams = new Map();
+  const ensureTeam = (team) => {
+    const teamId = idOf(team);
+    if (!teamId) return null;
+    if (!teams.has(teamId)) {
+      teams.set(teamId, {
+        teamId,
+        name: textOf(team?.name, 'Team'),
+        logo: team?.logo || team?.teamLogo || '',
+        played: 0,
+        won: 0,
+        lost: 0,
+        tied: 0,
+        points: 0
+      });
+    }
+    return teams.get(teamId);
+  };
+
+  matches.forEach((match) => {
+    const teamA = ensureTeam(teamFromMatch(match, 'teamA'));
+    const teamB = ensureTeam(teamFromMatch(match, 'teamB'));
+    if (!teamA || !teamB || !isCompleteMatch(match)) return;
+
+    teamA.played += 1;
+    teamB.played += 1;
+    const result = match.result || {};
+    if (result.tie || !result.winnerTeamId) {
+      teamA.tied += 1;
+      teamB.tied += 1;
+      teamA.points += 1;
+      teamB.points += 1;
+      return;
+    }
+
+    const winnerId = idOf(result.winnerTeamId);
+    const winner = winnerId === teamA.teamId ? teamA : winnerId === teamB.teamId ? teamB : null;
+    if (!winner) return;
+    const loser = winner === teamA ? teamB : teamA;
+    winner.won += 1;
+    winner.points += 2;
+    loser.lost += 1;
+  });
+
+  return [...teams.values()].sort((left, right) => (
+    right.points - left.points
+    || right.won - left.won
+    || left.lost - right.lost
+    || left.name.localeCompare(right.name)
+  ));
+}
+
+function TeamLeaderboard({ matches, scorer = false }) {
+  const standings = useMemo(() => buildTeamLeaderboard(matches), [matches]);
+  if (!standings.length) return null;
+
+  return (
+    <section className={`match-leaderboard ${scorer ? 'scorer-leaderboard' : ''}`} aria-labelledby={scorer ? 'scorer-leaderboard-title' : 'viewer-leaderboard-title'}>
+      <header>
+        <div>
+          <span className="cricket-kicker">TEAM STANDINGS</span>
+          <h2 id={scorer ? 'scorer-leaderboard-title' : 'viewer-leaderboard-title'}>Match leaderboard</h2>
+        </div>
+        <p>Win 2 points · Tie 1 point</p>
+      </header>
+      <div className="match-leaderboard-table-wrap">
+        <table>
+          <thead><tr><th scope="col">#</th><th scope="col">Team</th><th scope="col">P</th><th scope="col">W</th><th scope="col">L</th><th scope="col">T</th><th scope="col">Pts</th></tr></thead>
+          <tbody>
+            {standings.map((team, index) => (
+              <tr key={team.teamId}>
+                <td><strong className={`leaderboard-rank rank-${index + 1}`}>{index + 1}</strong></td>
+                <td><span className="leaderboard-team"><TeamMark team={team} size="small" /><strong>{team.name}</strong></span></td>
+                <td>{team.played}</td>
+                <td>{team.won}</td>
+                <td>{team.lost}</td>
+                <td>{team.tied}</td>
+                <td><strong>{team.points}</strong></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function AuctionBrandingBackdrop({ backgroundImage }) {
   const image = resolveAssetUrl(backgroundImage);
   return image
@@ -734,6 +822,8 @@ export function MatchesPage({ logo, backgroundImage }) {
             <span>live match{counts.live === 1 ? '' : 'es'}</span>
           </div>
         </section>
+
+        <TeamLeaderboard matches={matches} />
 
         <div className="match-filter-tabs" role="tablist" aria-label="Filter matches">
           {[
@@ -880,15 +970,15 @@ function BattingTable({ innings }) {
     ? allRows.filter((row) => row.didBat || row.isStriker || row.isNonStriker)
     : allRows;
   return (
-    <div className="score-table-wrap">
-      <table className="score-table">
+    <div className="score-table-wrap batting-score-table-wrap">
+      <table className="score-table batting-score-table">
         <thead><tr><th>Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th></tr></thead>
         <tbody>
           {rows.length ? rows.map((row, index) => {
             const runs = numberOf(row.runs);
             const balls = numberOf(row.balls);
             const strikeRate = row.strikeRate ?? (balls ? ((runs / balls) * 100).toFixed(1) : '0.0');
-            return <tr key={playerId(row) || index}><td><strong>{playerName(row)}</strong><small>{row.dismissal || row.status || (row.isOut ? 'out' : 'not out')}</small></td><td><strong>{runs}</strong></td><td>{balls}</td><td>{numberOf(row.fours)}</td><td>{numberOf(row.sixes)}</td><td>{strikeRate}</td></tr>;
+            return <tr key={playerId(row) || index}><td data-label="Batter"><strong>{playerName(row)}</strong><small>{row.dismissal || row.status || (row.isOut ? 'out' : 'not out')}</small></td><td data-label="Runs"><strong>{runs}</strong></td><td data-label="Balls">{balls}</td><td data-label="4s">{numberOf(row.fours)}</td><td data-label="6s">{numberOf(row.sixes)}</td><td data-label="Strike rate">{strikeRate}</td></tr>;
           }) : <tr><td colSpan="6" className="table-empty">Batting scorecard will appear after play begins.</td></tr>}
         </tbody>
       </table>
@@ -899,15 +989,15 @@ function BattingTable({ innings }) {
 function BowlingTable({ innings }) {
   const rows = bowlingRows(innings);
   return (
-    <div className="score-table-wrap">
-      <table className="score-table">
+    <div className="score-table-wrap bowling-score-table-wrap">
+      <table className="score-table bowling-score-table">
         <thead><tr><th>Bowler</th><th>O</th><th>M</th><th>R</th><th>W</th><th>WD</th><th>NB</th><th>Eco</th></tr></thead>
         <tbody>
           {rows.length ? rows.map((row, index) => {
             const balls = numberOf(row.balls, row.legalBalls);
             const conceded = numberOf(row.runsConceded, row.runs);
             const economy = row.economy ?? (balls ? (conceded / (balls / 6)).toFixed(2) : '0.00');
-            return <tr key={playerId(row) || index}><td><strong>{playerName(row)}</strong></td><td>{row.overs || oversFromBalls(balls)}</td><td>{numberOf(row.maidens)}</td><td>{conceded}</td><td><strong>{numberOf(row.wickets)}</strong></td><td>{numberOf(row.wides)}</td><td>{numberOf(row.noBalls)}</td><td>{economy}</td></tr>;
+            return <tr key={playerId(row) || index}><td data-label="Bowler"><strong>{playerName(row)}</strong></td><td data-label="Overs">{row.overs || oversFromBalls(balls)}</td><td data-label="Maidens">{numberOf(row.maidens)}</td><td data-label="Runs">{conceded}</td><td data-label="Wickets"><strong>{numberOf(row.wickets)}</strong></td><td data-label="Wides">{numberOf(row.wides)}</td><td data-label="No balls">{numberOf(row.noBalls)}</td><td data-label="Economy">{economy}</td></tr>;
           }) : <tr><td colSpan="8" className="table-empty">Bowling figures will appear after play begins.</td></tr>}
         </tbody>
       </table>
@@ -1390,6 +1480,8 @@ function ScorerDashboard({ logo, backgroundImage, session }) {
           <div><span className="cricket-kicker">SCORING CONTROL</span><h1>Match scoring</h1><p>Each match keeps its own innings and delivery history, so multiple matches can run at the same time.</p></div>
           <button type="button" onClick={() => setShowCreate((shown) => !shown)}>{showCreate ? 'Close setup' : '+ Create match'}</button>
         </section>
+
+        <TeamLeaderboard matches={matches} scorer />
 
         {showCreate ? <form className="create-match-form" onSubmit={createMatch}>
           <header><div><span>NEW MATCH</span><h2>Match setup</h2></div><small>Teams and players are loaded from the database.</small></header>

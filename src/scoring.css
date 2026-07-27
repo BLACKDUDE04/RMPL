@@ -3368,6 +3368,172 @@
   }
 }
 
+@media (max-width: 600px) {
+  .public-score-teams {
+    align-items: stretch;
+  }
+
+  .public-score-teams > div {
+    min-width: 0;
+  }
+
+  .public-score-teams > div > span {
+    display: -webkit-box;
+    min-height: 2.35em;
+    overflow: hidden;
+    line-height: 1.15;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .public-score-result,
+  .public-score-equation {
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 12px;
+    line-height: 1.35;
+  }
+
+  .live-player-grid p {
+    min-width: 0;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .live-player-grid p > strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .live-player-grid p > span {
+    font-size: 0.78rem;
+  }
+
+  .recent-over-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .recent-over-heading > strong {
+    text-align: left;
+  }
+
+  .score-table-wrap {
+    width: 100%;
+    margin-inline: 0;
+    overflow: visible;
+    border: 0;
+  }
+
+  .score-table {
+    display: block;
+    min-width: 0;
+    font-size: 0.76rem;
+  }
+
+  .score-table thead {
+    display: none;
+  }
+
+  .score-table tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .score-table tbody tr {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+  }
+
+  .bowling-score-table tbody tr {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .score-table td,
+  .score-table th:first-child,
+  .score-table td:first-child {
+    position: static;
+    display: grid;
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    justify-items: center;
+    gap: 3px;
+    padding: 9px 5px;
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    border-right: 1px solid rgba(255, 255, 255, 0.055);
+    text-align: center;
+    text-overflow: clip;
+    white-space: normal;
+  }
+
+  .score-table td::before {
+    content: attr(data-label);
+    color: #6f897c;
+    font-size: 0.54rem;
+    font-weight: 850;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .score-table td:first-child {
+    grid-column: 1 / -1;
+    justify-items: start;
+    padding: 11px 12px;
+    background: rgba(49, 209, 124, 0.06);
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.065);
+    text-align: left;
+  }
+
+  .score-table td:first-child::before {
+    display: none;
+  }
+
+  .score-table td:first-child strong {
+    width: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .score-table .table-empty {
+    display: block;
+    grid-column: 1 / -1;
+    padding: 22px 12px;
+    text-align: center;
+  }
+
+  .score-table .table-empty::before {
+    display: none;
+  }
+
+  .innings-totals {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .innings-totals > span {
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.025);
+    border-radius: 9px;
+  }
+
+  .innings-detail-line {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .next-bowler-popup,
   .delivery-celebration,
