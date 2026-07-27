@@ -549,6 +549,104 @@
   line-height: 1.55;
 }
 
+.match-leaderboard {
+  margin: 0 0 24px;
+  padding: 22px;
+  border: 1px solid var(--cricket-line);
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(230, 185, 79, 0.09), transparent 42%),
+    rgba(24, 34, 53, 0.9);
+  box-shadow: 0 18px 44px rgba(3, 9, 18, 0.22);
+}
+
+.match-leaderboard > header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.match-leaderboard h2 {
+  margin: 4px 0 0;
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+}
+
+.match-leaderboard > header p {
+  margin: 0;
+  color: var(--cricket-muted);
+  font-size: 0.82rem;
+}
+
+.match-leaderboard-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(226, 190, 96, 0.13);
+  border-radius: 15px;
+}
+
+.match-leaderboard table {
+  width: 100%;
+  min-width: 570px;
+  border-collapse: collapse;
+}
+
+.match-leaderboard th,
+.match-leaderboard td {
+  padding: 12px 14px;
+  text-align: center;
+  border-bottom: 1px solid rgba(226, 190, 96, 0.1);
+}
+
+.match-leaderboard th {
+  color: var(--cricket-muted);
+  background: rgba(5, 13, 25, 0.36);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.match-leaderboard th:nth-child(2),
+.match-leaderboard td:nth-child(2) {
+  width: 100%;
+  text-align: left;
+}
+
+.match-leaderboard tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.match-leaderboard tbody tr:hover {
+  background: rgba(230, 185, 79, 0.045);
+}
+
+.leaderboard-team {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+.leaderboard-rank {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--cricket-muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.leaderboard-rank.rank-1 {
+  color: #201602;
+  background: linear-gradient(145deg, #ffe89a, var(--cricket-gold));
+  box-shadow: 0 4px 14px rgba(248, 200, 75, 0.25);
+}
+
+.scorer-leaderboard {
+  border-color: rgba(230, 185, 79, 0.28);
+}
+
 .match-centre-live-count {
   display: grid;
   flex: 0 0 auto;
@@ -2730,6 +2828,22 @@
 
   .match-centre-live-count strong {
     font-size: 1.45rem;
+  }
+
+  .match-leaderboard {
+    padding: 15px;
+    border-radius: 18px;
+  }
+
+  .match-leaderboard > header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .match-leaderboard th,
+  .match-leaderboard td {
+    padding: 10px;
   }
 
   .match-centre-grid,
