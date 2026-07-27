@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
+import {
+  MatchDetailsPage,
+  MatchesPage,
+  RegistrationLiveMatches,
+  ScorerDashboardPage,
+  ScorerMatchPage,
+  clearScorerSessionToken
+} from './Scoring';
 
 const API_ORIGIN = String(import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
 const API = `${API_ORIGIN}/api`;
@@ -219,6 +227,98 @@ function TeamPlayersPage({ teams }) {
   const team = teams.find((item) => item._id === teamId);
   if (!team) return <main className="panel">Loading team...</main>;
   return <main className="panel"><div className="page-heading"><div className="team-detail-title">{team.logo ? <img src={resolveAssetUrl(team.logo)} alt={team.name} /> : null}<div><span className="eyebrow">TEAM SQUAD</span><h2>{team.name}</h2><p>{team.playerCount} players</p></div></div><Link to="/teams" className="back-link">Back</Link></div><div className="team-detail-stats"><span>Opening <strong>{Number(team.purse).toLocaleString()} Points</strong></span><span>Spent <strong>{Number(team.spent).toLocaleString()} Points</strong></span><span>Remaining <strong>{Number(team.remainingPurse).toLocaleString()} Points</strong></span></div><div className="team-squad-grid">{(team.players || []).map((player) => <article className="squad-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span></span><h3>{player.name}</h3><p>{categoryLabels[player.category]}</p><p><strong>Age:</strong> {player.age || '—'}</p><strong>{Number(player.amount).toLocaleString()} Points</strong></div></article>)}</div></main>;
+}
+
+function MatchRecordsPage() {
+  const [matches, setMatches] = useState([]);
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState('');
+  const [feedback, setFeedback] = useState('');
+
+  const loadMatches = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API}/matches?limit=100`, { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to load saved matches.');
+      setMatches(data.matches || []);
+      setFeedback('');
+    } catch (error) {
+      setFeedback(error.message || 'Unable to load saved matches.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadMatches(); }, []);
+  useLiveDataRefresh(loadMatches);
+
+  const deleteMatch = async (match) => {
+    if (!password) {
+      setFeedback('Enter the scorer password before deleting a match record.');
+      return;
+    }
+    const label = match.title || `${match.teamA?.name || 'Team A'} vs ${match.teamB?.name || 'Team B'}`;
+    if (!window.confirm(`Delete "${label}" permanently? All innings, scores, and ball history for this match will be removed.`)) return;
+    setDeletingId(match._id || match.id);
+    setFeedback('');
+    try {
+      const response = await fetch(`${API}/matches/${match._id || match.id}`, {
+        method: 'DELETE',
+        headers: { 'x-scorer-pin': password }
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'Unable to delete match record.');
+      setMatches((current) => current.filter((item) => (item._id || item.id) !== (match._id || match.id)));
+      setPassword('');
+      setFeedback(data.message || 'Match record deleted permanently.');
+      window.dispatchEvent(new CustomEvent(LIVE_DATA_CHANGED_EVENT, { detail: { path: `/api/matches/${match._id || match.id}` } }));
+    } catch (error) {
+      setFeedback(error.message || 'Unable to delete match record.');
+    } finally {
+      setDeletingId('');
+    }
+  };
+
+  return (
+    <main className="panel match-records-page">
+      <div className="page-heading">
+        <div><span className="eyebrow">SAVED SCORING DATA</span><h2>Match Records</h2><p>Every scorer match is saved in the database and appears here and in the scorer console.</p></div>
+        <Link className="back-link" to="/auction">Back to auction</Link>
+      </div>
+      <section className="match-record-auth">
+        <label>Scorer password
+          <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" placeholder="Required only for deletion" />
+        </label>
+        <Link to="/scorer">Open scorer console</Link>
+      </section>
+      {feedback ? <p className="feedback" role="status">{feedback}</p> : null}
+      {loading ? <p>Loading saved match records...</p> : null}
+      {!loading && !matches.length ? <p className="empty-state">No saved match records.</p> : null}
+      <div className="match-record-list">
+        {matches.map((match) => {
+          const matchId = match._id || match.id;
+          const teamA = match.teamA?.name || 'Team A';
+          const teamB = match.teamB?.name || 'Team B';
+          return <article key={matchId} className="match-record-row">
+            <div>
+              <span className={`match-record-status ${String(match.status || '').toLowerCase()}`}>{String(match.status || 'scheduled').replaceAll('_', ' ')}</span>
+              <h3>{match.title || `${teamA} vs ${teamB}`}</h3>
+              <p>{teamA} vs {teamB} · {match.oversPerInnings || '—'} overs</p>
+              <small>{match.scheduledAt ? new Date(match.scheduledAt).toLocaleString() : 'Schedule not set'}</small>
+            </div>
+            <div className="match-record-actions">
+              <Link to={`/scorer/${matchId}`}>View in scorer</Link>
+              <button className="danger-button" type="button" disabled={deletingId === matchId} onClick={() => deleteMatch(match)}>
+                {deletingId === matchId ? 'Deleting...' : 'Delete record'}
+              </button>
+            </div>
+          </article>;
+        })}
+      </div>
+    </main>
+  );
 }
 
 function UnsoldPlayersPage({ teams, refreshData, settings }) {
@@ -886,6 +986,8 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
         
       </div>
 
+      <RegistrationLiveMatches />
+
       <form ref={formRef} className="registration-form" onSubmit={handleSubmit} aria-busy={submitting}>
         <label>Player Name*<input name="name" placeholder=" Name"required /></label>
         <label>Age*<input name="age" type="number" inputMode="numeric" min="1" step="1" placeholder=" Age" required /></label>
@@ -1074,9 +1176,16 @@ function RegistrationDataPage() {
 
 function App() {
   const location = useLocation();
-  const isStandaloneRegistrationRoute = location.pathname === '/register' || location.pathname === '/register-form';
+  const normalizedPath = location.pathname.length > 1
+    ? location.pathname.replace(/\/+$/, '')
+    : location.pathname;
+  const isStandaloneRegistrationRoute = normalizedPath === '/register' || normalizedPath === '/register-form';
+  const isScoringOnlyRoute = /^\/(?:matches|scorer)(?:\/|$)/.test(normalizedPath);
+  const isStandaloneRoute = isStandaloneRegistrationRoute || isScoringOnlyRoute;
+  const shouldLoadAuctionData = !isStandaloneRoute && normalizedPath !== '/';
   const [categories, setCategories] = useState([]);
   const [settings, setSettings] = useState({ backgroundImage: '', logo: '', auctionStartAudio: '', playerSoldAudio: '' });
+  const [publicRegistrationCount, setPublicRegistrationCount] = useState(0);
   const [playerLimitEnabled, setPlayerLimitEnabled] = useState(false);
   const [auctionCardSelectionEnabled, setAuctionCardSelectionEnabled] = useState(false);
   const [teams, setTeams] = useState([]);
@@ -1092,8 +1201,11 @@ function App() {
   const [excelColumns, setExcelColumns] = useState(defaultExcelColumns);
   const [showMoreNav, setShowMoreNav] = useState(false);
   const [settingsFeedback, setSettingsFeedback] = useState('');
+  const [scorerPasswordFeedback, setScorerPasswordFeedback] = useState('');
+  const [changingScorerPassword, setChangingScorerPassword] = useState(false);
   const [routeLoading, setRouteLoading] = useState(true);
   const backendVersionRef = useRef(null);
+  const auctionVersionRef = useRef(null);
   const loadDataPromiseRef = useRef(null);
   const loadDataQueuedRef = useRef(false);
 
@@ -1148,11 +1260,18 @@ function App() {
 
       const nextVersion = Number(data.version);
       if (Number.isFinite(nextVersion)) {
-        const knownVersion = Number(backendVersionRef.current || 0);
-        if (knownVersion > nextVersion) {
+        backendVersionRef.current = Math.max(
+          Number(backendVersionRef.current || 0),
+          nextVersion
+        );
+      }
+      const nextAuctionVersion = Number(data.auctionVersion ?? data.version);
+      if (Number.isFinite(nextAuctionVersion)) {
+        const knownAuctionVersion = Number(auctionVersionRef.current || 0);
+        if (knownAuctionVersion > nextAuctionVersion) {
           loadDataQueuedRef.current = true;
         } else {
-          backendVersionRef.current = nextVersion;
+          auctionVersionRef.current = nextAuctionVersion;
         }
       }
       return true;
@@ -1175,15 +1294,43 @@ function App() {
     return request;
   };
 
+  const loadPublicRegistrationSummary = async () => {
+    try {
+      const response = await fetch(`${API}/public/registration-summary`, { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Unable to load registration summary');
+      setPublicRegistrationCount(Number(data.registrationCount || 0));
+      setSettings((current) => ({
+        ...current,
+        logo: data.logo || current.logo || '',
+        backgroundImage: data.backgroundImage || current.backgroundImage || ''
+      }));
+    } catch {
+      // Registration and match pages remain usable if public branding is unavailable.
+    }
+  };
+
   useEffect(() => {
     let active = true;
+    if (isStandaloneRoute) {
+      setRouteLoading(false);
+      setPendingRegistrations([]);
+      loadPublicRegistrationSummary();
+      return () => { active = false; };
+    }
+    if (!shouldLoadAuctionData) {
+      setRouteLoading(false);
+      return () => { active = false; };
+    }
+
+    setRouteLoading(true);
     loadData(false).finally(() => {
       if (active) setRouteLoading(false);
     });
     return () => {
       active = false;
     };
-  }, []);
+  }, [isStandaloneRoute, shouldLoadAuctionData]);
 
   useEffect(() => {
     let active = true;
@@ -1192,19 +1339,34 @@ function App() {
     let fallbackTimer = null;
     let eventSource = null;
 
-    const handleBackendVersion = (version) => {
+    const handleBackendVersion = (version, detail = {}) => {
       const nextVersion = Number(version);
       if (!active || !Number.isFinite(nextVersion)) return;
+      const nextAuctionVersion = Number(detail.auctionVersion);
 
       if (backendVersionRef.current === null) {
         backendVersionRef.current = nextVersion;
+        if (Number.isFinite(nextAuctionVersion)) auctionVersionRef.current = nextAuctionVersion;
         return;
       }
       if (backendVersionRef.current === nextVersion) return;
 
+      const previousAuctionVersion = auctionVersionRef.current;
       backendVersionRef.current = nextVersion;
-      window.dispatchEvent(new Event(LIVE_DATA_CHANGED_EVENT));
-      loadData();
+      if (Number.isFinite(nextAuctionVersion)) auctionVersionRef.current = nextAuctionVersion;
+      window.dispatchEvent(new CustomEvent(LIVE_DATA_CHANGED_EVENT, { detail }));
+      const changedPath = String(detail.path || '');
+      const isMatchChange = changedPath.startsWith('/api/matches');
+      const isSettingsChange = changedPath.startsWith('/api/settings');
+      const auctionChanged = Number.isFinite(nextAuctionVersion)
+        ? previousAuctionVersion !== null && nextAuctionVersion !== previousAuctionVersion
+        : !isMatchChange;
+      const shouldRefreshPublicSummary = (isStandaloneRegistrationRoute && auctionChanged)
+        || (isScoringOnlyRoute && (isSettingsChange || (!changedPath && auctionChanged)));
+      if (shouldRefreshPublicSummary) {
+        loadPublicRegistrationSummary();
+      }
+      if (shouldLoadAuctionData && auctionChanged) loadData();
     };
 
     const checkForBackendChanges = async () => {
@@ -1213,8 +1375,8 @@ function App() {
       try {
         const response = await fetch(`${API}/data-version`, { cache: 'no-store' });
         if (!response.ok) return;
-        const { version } = await response.json();
-        handleBackendVersion(version);
+        const data = await response.json();
+        handleBackendVersion(data.version, data);
       } catch {
         // Leave the current page usable while the backend is unavailable.
       } finally {
@@ -1239,7 +1401,8 @@ function App() {
       eventSource = new window.EventSource(`${API}/live-events`);
       eventSource.addEventListener('version', (event) => {
         try {
-          handleBackendVersion(JSON.parse(event.data).version);
+          const detail = JSON.parse(event.data);
+          handleBackendVersion(detail.version, detail);
         } catch {
           // A malformed event should not stop fallback refreshes.
         }
@@ -1266,7 +1429,7 @@ function App() {
       eventSource?.close();
       window.removeEventListener('focus', checkForBackendChanges);
     };
-  }, []);
+  }, [isScoringOnlyRoute, isStandaloneRegistrationRoute, shouldLoadAuctionData]);
 
   const categorySummary = useMemo(() => {
     return categories.map((item) => ({
@@ -1414,9 +1577,57 @@ function App() {
     }
   };
 
+  const changeScorerPassword = async (event) => {
+    event.preventDefault();
+    if (changingScorerPassword) return;
+
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const currentPassword = String(formData.get('currentScorerPassword') || '');
+    const newPassword = String(formData.get('newScorerPassword') || '');
+    const confirmPassword = String(formData.get('confirmScorerPassword') || '');
+
+    if (newPassword !== confirmPassword) {
+      setScorerPasswordFeedback('New scorer passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      setScorerPasswordFeedback('New scorer password must be between 8 and 128 characters.');
+      return;
+    }
+    if (newPassword === currentPassword) {
+      setScorerPasswordFeedback('Choose a new scorer password that is different from the current password.');
+      return;
+    }
+
+    setChangingScorerPassword(true);
+    setScorerPasswordFeedback('Changing scorer password...');
+    try {
+      const response = await fetch(`${API}/scorer/password`, {
+        method: 'PATCH',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-scorer-pin': currentPassword
+        },
+        body: JSON.stringify({ newPassword })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || 'Unable to change scorer password.');
+
+      clearScorerSessionToken();
+      form.reset();
+      setScorerPasswordFeedback(`${data.message || 'Scorer password changed successfully.'} Sign in to the scorer again with the new password.`);
+    } catch (error) {
+      setScorerPasswordFeedback(error.message || 'Unable to change scorer password.');
+    } finally {
+      setChangingScorerPassword(false);
+    }
+  };
+
   return (
-    <div className="app-shell" style={{ backgroundImage: settings.backgroundImage ? `url(${resolveAssetUrl(settings.backgroundImage)})` : 'none' }}>
-      {routeLoading && !isStandaloneRegistrationRoute ? (
+    <div className={`app-shell ${isScoringOnlyRoute ? 'scoring-only-route' : ''}`} style={{ backgroundImage: settings.backgroundImage ? `url(${resolveAssetUrl(settings.backgroundImage)})` : 'none' }}>
+      {routeLoading && !isStandaloneRoute ? (
         <div className="rmpl-loader" role="status" aria-live="polite" aria-label="Loading RMPL">
           <div className="rmpl-spinner">
             {settings.logo ? (
@@ -1429,7 +1640,7 @@ function App() {
           <p>Loading auction...</p>
         </div>
       ) : null}
-      {!isStandaloneRegistrationRoute ? <header className="topbar">
+      {!isStandaloneRoute ? <header className="topbar">
         <div className="brand">
           {settings.logo ? <img src={resolveAssetUrl(settings.logo)} alt="logo" className="logo" /> : null}
           <div>
@@ -1455,6 +1666,7 @@ function App() {
               <Link to="/excel" onClick={() => setShowMoreNav(false)}>Excel</Link>
               <Link to="/video" onClick={() => setShowMoreNav(false)}>Welcome Video</Link>
               <Link to="/testimonials" onClick={() => setShowMoreNav(false)}>Previous Events</Link>
+              <Link to="/match-records" onClick={() => setShowMoreNav(false)}>Match Records</Link>
               <Link to="/settings" onClick={() => setShowMoreNav(false)}>Settings</Link>
             </div> : null}
           </div>
@@ -1495,8 +1707,12 @@ function App() {
           </main>
         } />
 
-        <Route path="/register" element={<RegistrationPage onRegistered={loadData} logo={settings.logo} registeredCount={pendingRegistrations.length + categories.reduce((count, category) => count + (category.players?.filter((player) => player.source === 'registration').length || 0), 0)} />} />
-        <Route path="/register-form" element={<RegistrationPage onRegistered={loadData} logo={settings.logo} registeredCount={pendingRegistrations.length + categories.reduce((count, category) => count + (category.players?.filter((player) => player.source === 'registration').length || 0), 0)} />} />
+        <Route path="/register" element={<RegistrationPage onRegistered={loadPublicRegistrationSummary} logo={settings.logo} registeredCount={publicRegistrationCount} />} />
+        <Route path="/register-form" element={<RegistrationPage onRegistered={loadPublicRegistrationSummary} logo={settings.logo} registeredCount={publicRegistrationCount} />} />
+        <Route path="/matches" element={<MatchesPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
+        <Route path="/matches/:matchId" element={<MatchDetailsPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
+        <Route path="/scorer" element={<ScorerDashboardPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
+        <Route path="/scorer/:matchId" element={<ScorerMatchPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
         <Route path="/registration-data" element={<RegistrationDataPage />} />
         <Route path="/approvals" element={<main className="panel approvals-page"><div className="page-heading"><div><span className="eyebrow">APPROVAL PANEL</span><h2>Pending registrations</h2><p>Review player signups and approve them for auction.</p></div><Link className="back-link" to="/">Back to auction</Link></div><section className="pending-registrations-panel"><div className="pending-registrations-header"><div><span className="eyebrow">PENDING</span><h3>Player approvals</h3></div><span className="pending-count-badge">{pendingRegistrations.length}</span></div>{pendingRegistrations.length ? <div className="pending-registrations-list">{pendingRegistrations.map((player) => <article className="pending-registration-card" key={player._id}><div className="pending-registration-main"><h4>{player.name}</h4><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Phone:</strong> {player.phone || '—'}</p><p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p>{player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}{player.previouslyPlayedIn || player.playedIn ? <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn}</p> : null}{player.details ? <p>{player.details}</p> : null}{player.paymentReceipt ? <p><a href={resolveAssetUrl(player.paymentReceipt)} target="_blank" rel="noreferrer">View payment receipt</a></p> : null}</div><button type="button" onClick={() => approveRegistration(player)}>Approve</button></article>)}</div> : <p className="pending-empty">No pending registrations right now.</p>}</section>{feedback ? <p className="feedback">{feedback}</p> : null}</main>} />
         <Route path="/category/:categoryKey" element={<CategoryAuctionPage categories={categories} refreshCategories={loadData} teams={teams} auctionStartAudio={settings.auctionStartAudio} playerSoldAudio={settings.playerSoldAudio} auctionLogo={settings.logo} playerLimitEnabled={settings.playerLimitEnabled} maxPlayersPerTeam={Number(settings.maxPlayersPerTeam || 0)} cardSelectionEnabled={settings.auctionCardSelectionEnabled} />} />
@@ -1510,6 +1726,7 @@ function App() {
         <Route path="/players" element={<PlayersPage refreshData={loadData} />} />
         <Route path="/video" element={<WelcomeVideoPage settings={settings} refreshData={loadData} />} />
         <Route path="/testimonials" element={<TestimonialsPage />} />
+        <Route path="/match-records" element={<MatchRecordsPage />} />
 
         <Route path="/settings" element={
           <main className="panel settings-page">
@@ -1563,6 +1780,47 @@ function App() {
               </section>
               <div className="settings-save-bar"><span>Changes apply after saving.</span><button type="submit">Save All Settings</button></div>
             </form>
+            <section className="settings-section scorer-password-section">
+              <div className="settings-section-heading"><span>06</span><div><h3>Scorer Password</h3><p>Change the private password used to open and operate the live scoring console.</p></div></div>
+              <form className="scorer-password-form" onSubmit={changeScorerPassword}>
+                <label>Current scorer password
+                  <input
+                    type="password"
+                    name="currentScorerPassword"
+                    autoComplete="current-password"
+                    maxLength="128"
+                    spellCheck="false"
+                    required
+                  />
+                </label>
+                <label>New scorer password
+                  <input
+                    type="password"
+                    name="newScorerPassword"
+                    autoComplete="new-password"
+                    minLength="8"
+                    maxLength="128"
+                    aria-describedby="scorer-password-guidance"
+                    spellCheck="false"
+                    required
+                  />
+                </label>
+                <label>Confirm new password
+                  <input
+                    type="password"
+                    name="confirmScorerPassword"
+                    autoComplete="new-password"
+                    minLength="8"
+                    maxLength="128"
+                    spellCheck="false"
+                    required
+                  />
+                </label>
+                <p id="scorer-password-guidance" className="scorer-password-guidance">Use 8–128 characters. The current password is verified securely and is never added to the branding settings upload.</p>
+                <button type="submit" disabled={changingScorerPassword}>{changingScorerPassword ? 'Changing password...' : 'Change Scorer Password'}</button>
+              </form>
+              {scorerPasswordFeedback ? <p className={`settings-feedback scorer-password-feedback ${scorerPasswordFeedback.toLowerCase().includes('changed') ? 'success' : scorerPasswordFeedback.includes('Changing') ? 'saving' : ''}`} role="status">{scorerPasswordFeedback}</p> : null}
+            </section>
             {settingsFeedback ? <p className={`settings-feedback ${settingsFeedback.includes('successfully') ? 'success' : settingsFeedback.includes('Saving') ? 'saving' : ''}`} role="status">{settingsFeedback}</p> : null}
           </main>
         } />

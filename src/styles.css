@@ -1960,6 +1960,67 @@ button {
   border-color: #3b82f6;
 }
 
+.scorer-password-section {
+  margin-top: 20px;
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.scorer-password-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.scorer-password-form label {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 14px;
+  background: #0f172a;
+  border-radius: 13px;
+  font-weight: 700;
+}
+
+.scorer-password-form input {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 12px;
+  color: #f8fafc;
+  background: #020617;
+  border: 1px solid #64748b;
+  border-radius: 10px;
+  outline: none;
+}
+
+.scorer-password-form input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.scorer-password-guidance {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.scorer-password-form > button {
+  grid-column: 1 / -1;
+  justify-self: end;
+  min-width: 230px;
+}
+
+.scorer-password-form > button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.scorer-password-feedback {
+  margin-bottom: 0;
+}
+
 .player-limit-setting {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -3351,6 +3412,133 @@ button {
 
   .selected-player-card {
     padding-inline: 10px;
+  }
+}
+
+@media (max-width: 700px) {
+  .scorer-password-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .scorer-password-guidance,
+  .scorer-password-form > button {
+    grid-column: auto;
+  }
+
+  .scorer-password-form > button {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+.match-records-page {
+  display: grid;
+  gap: 18px;
+}
+
+.match-record-auth {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+}
+
+.match-record-auth label {
+  display: grid;
+  width: min(100%, 390px);
+  gap: 7px;
+  color: #334155;
+  font-weight: 750;
+}
+
+.match-record-auth input {
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+}
+
+.match-record-auth a,
+.match-record-actions a {
+  color: #1d4ed8;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.match-record-list {
+  display: grid;
+  gap: 11px;
+}
+
+.match-record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 14px;
+}
+
+.match-record-row h3 {
+  margin: 5px 0;
+  color: #0f172a;
+}
+
+.match-record-row p,
+.match-record-row small {
+  margin: 0;
+  color: #64748b;
+}
+
+.match-record-status {
+  display: inline-block;
+  padding: 4px 8px;
+  color: #334155;
+  background: #e2e8f0;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.match-record-status.live,
+.match-record-status.awaiting_awards {
+  color: #7f1d1d;
+  background: #fee2e2;
+}
+
+.match-record-status.completed {
+  color: #14532d;
+  background: #dcfce7;
+}
+
+.match-record-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 10px;
+}
+
+@media (max-width: 700px) {
+  .match-record-auth,
+  .match-record-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .match-record-actions {
+    justify-content: space-between;
+  }
+
+  .match-record-actions .danger-button {
+    min-height: 42px;
   }
 }
 

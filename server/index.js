@@ -4,7 +4,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
-const XLSX = require('xlsx');
 const mongoose = require('mongoose');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -14,7 +13,21 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3001;
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 let dataVersion = Date.now();
+let auctionDataVersion = dataVersion;
+const liveDataClients = new Set();
+let xlsxModule;
+let sharpModule;
 fs.mkdirSync(uploadDir, { recursive: true });
+
+const getXlsx = () => {
+  if (!xlsxModule) xlsxModule = require('xlsx');
+  return xlsxModule;
+};
+
+const getSharp = () => {
+  if (!sharpModule) sharpModule = require('sharp');
+  return sharpModule;
+};
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
@@ -24,7 +37,80 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024,
+    files: 20
+  }
+});
+
+const imageUploadProfiles = {
+  backgroundImage: { maxDimension: 1920, quality: 82 },
+  image: { maxDimension: 1000, quality: 82 },
+  paymentReceipt: { maxDimension: 1600, quality: 82 },
+  logo: { maxDimension: 900, quality: 86 },
+  teamLogo: { maxDimension: 900, quality: 86 },
+  winnerImage: { maxDimension: 1200, quality: 84 },
+  eventImages: { maxDimension: 1600, quality: 82 }
+};
+
+function imageProfileFor(file) {
+  if (file.fieldname?.startsWith('categoryImage_')) return { maxDimension: 1400, quality: 82 };
+  if (file.fieldname?.startsWith('teamLogo_')) return imageUploadProfiles.teamLogo;
+  return imageUploadProfiles[file.fieldname] || { maxDimension: 1600, quality: 82 };
+}
+
+async function optimizeImageUpload(file) {
+  const optimizableTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/tiff']);
+  if (!file?.path || !optimizableTypes.has(file.mimetype)) return file;
+
+  const { maxDimension, quality } = imageProfileFor(file);
+  const parsedPath = path.parse(file.path);
+  const optimizedFilename = `${path.parse(file.filename).name}.webp`;
+  const optimizedPath = path.join(parsedPath.dir, optimizedFilename);
+  const temporaryPath = path.join(parsedPath.dir, `${path.parse(file.filename).name}.optimizing.webp`);
+
+  try {
+    await getSharp()(file.path, { failOn: 'warning', limitInputPixels: 50_000_000 })
+      .rotate()
+      .resize({
+        width: maxDimension,
+        height: maxDimension,
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+      .webp({
+        quality,
+        alphaQuality: 90,
+        effort: 5,
+        smartSubsample: true
+      })
+      .toFile(temporaryPath);
+
+    await fs.promises.unlink(file.path);
+    await fs.promises.rename(temporaryPath, optimizedPath);
+    const optimizedStats = await fs.promises.stat(optimizedPath);
+    file.filename = optimizedFilename;
+    file.path = optimizedPath;
+    file.mimetype = 'image/webp';
+    file.size = optimizedStats.size;
+    return file;
+  } catch (error) {
+    await fs.promises.unlink(temporaryPath).catch(() => {});
+    console.warn(`Image optimization skipped for ${file.originalname}:`, error.message);
+    return file;
+  }
+}
+
+async function optimizeRequestUploads(req) {
+  const files = [
+    ...(req.file ? [req.file] : []),
+    ...(Array.isArray(req.files) ? req.files : Object.values(req.files || {}).flat())
+  ];
+  await Promise.all(files.map(optimizeImageUpload));
+  return files;
+}
 
 function getUploadsBucket() {
   return new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'uploads' });
@@ -58,7 +144,11 @@ const durableUpload = (middleware) => (req, res, next) => {
   middleware(req, res, async (error) => {
     if (error) return next(error);
     try {
+      const files = await optimizeRequestUploads(req);
       await persistRequestUploads(req);
+      res.on('finish', () => {
+        Promise.all(files.map((file) => fs.promises.unlink(file.path).catch(() => {}))).catch(() => {});
+      });
       next();
     } catch (persistError) {
       next(persistError);
@@ -135,8 +225,15 @@ async function sendApprovalMessage(_phone, _playerName) {
 
 async function deleteUploadFile(filePath) {
   if (!filePath) return;
-  const normalizedPath = String(filePath).trim();
-  if (!normalizedPath || !normalizedPath.startsWith('/uploads/')) return;
+  let normalizedPath = String(filePath).trim();
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    try {
+      normalizedPath = new URL(normalizedPath).pathname;
+    } catch {
+      return;
+    }
+  }
+  if (!normalizedPath.startsWith('/uploads/')) return;
   const fileName = path.basename(normalizedPath);
   const absolutePath = path.join(uploadDir, fileName);
   if (mongoose.connection.readyState === 1) {
@@ -151,6 +248,58 @@ async function deleteUploadFile(filePath) {
       console.warn('Failed to delete upload file', absolutePath, error.message);
     }
   }
+}
+
+function uploadPathPattern(filePath) {
+  if (!filePath) return null;
+  let normalizedPath = String(filePath).trim();
+  if (/^https?:\/\//i.test(normalizedPath)) {
+    try {
+      normalizedPath = new URL(normalizedPath).pathname;
+    } catch {
+      return null;
+    }
+  }
+  if (!normalizedPath.startsWith('/uploads/')) return null;
+  const escapedPath = normalizedPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`${escapedPath}$`);
+}
+
+async function deleteReplacedUpload(previousPath, nextPath) {
+  const previousPattern = uploadPathPattern(previousPath);
+  const nextPattern = uploadPathPattern(nextPath);
+  if (!previousPattern || String(previousPattern) === String(nextPattern)) return;
+
+  const referenceQuery = previousPattern;
+  const [settingsReferences, teamReferences, playerReferences, testimonialReferences] = await Promise.all([
+    Settings.countDocuments({
+      $or: [
+        { backgroundImage: referenceQuery }, { logo: referenceQuery },
+        { auctionStartAudio: referenceQuery }, { playerSoldAudio: referenceQuery },
+        { welcomeVideo: referenceQuery }, { 'categoryImages.allrounder': referenceQuery },
+        { 'categoryImages.batsmen': referenceQuery }, { 'categoryImages.bowler': referenceQuery },
+        { 'categoryImages.wicketkeeper': referenceQuery }, { 'categoryImages.mvp': referenceQuery }
+      ]
+    }),
+    Team.countDocuments({ logo: referenceQuery }),
+    Player.countDocuments({ $or: [{ image: referenceQuery }, { paymentReceipt: referenceQuery }] }),
+    Testimonial.countDocuments({ $or: [{ images: referenceQuery }, { winnerImage: referenceQuery }] })
+  ]);
+
+  if (settingsReferences + teamReferences + playerReferences + testimonialReferences === 0) {
+    await deleteUploadFile(previousPath);
+  }
+}
+
+function collectUploadPaths(value, paths = new Set()) {
+  if (typeof value === 'string') {
+    if (uploadPathPattern(value)) paths.add(value);
+  } else if (Array.isArray(value)) {
+    value.forEach((item) => collectUploadPaths(item, paths));
+  } else if (value && typeof value === 'object') {
+    Object.values(value).forEach((item) => collectUploadPaths(item, paths));
+  }
+  return paths;
 }
 
 function parseRoleSelections(rawValues) {
@@ -175,10 +324,12 @@ const playerSchema = new mongoose.Schema({
   category: String,
   auctionNumber: Number,
   playedIn: String,
-  team: String,
+  team: { type: String, select: false },
   teamId: { type: mongoose.Schema.Types.ObjectId, ref: 'Team', default: null },
   amount: Number,
+  age: Number,
   phone: String,
+  tshirtSize: String,
   sold: Boolean,
   unsold: Boolean,
   source: String,
@@ -199,6 +350,7 @@ const settingsSchema = new mongoose.Schema({
   playerLimitEnabled: { type: Boolean, default: false },
   maxPlayersPerTeam: { type: Number, default: 0, min: 0 },
   auctionCardSelectionEnabled: { type: Boolean, default: false },
+  scorerPasswordHash: { type: String, default: '', select: false },
   categoryImages: {
     allrounder: { type: String, default: '' },
     batsmen: { type: String, default: '' },
@@ -206,12 +358,12 @@ const settingsSchema = new mongoose.Schema({
     wicketkeeper: { type: String, default: '' }
     ,
     mvp: { type: String, default: '' }
-  },
-  teams: [{
-    name: String,
-    logo: String
-  }]
+  }
 }, { timestamps: true });
+
+playerSchema.index({ source: 1, registrationStatus: 1, createdAt: 1 });
+playerSchema.index({ teamId: 1, sold: 1 });
+playerSchema.index({ category: 1, sold: 1, unsold: 1, auctionNumber: 1 });
 
 const Player = mongoose.model('Player', playerSchema);
 const Settings = mongoose.model('Settings', settingsSchema);
@@ -222,6 +374,65 @@ const teamSchema = new mongoose.Schema({
   remainingPurse: { type: Number, default: 0, min: 0 }
 }, { timestamps: true });
 const Team = mongoose.model('Team', teamSchema);
+
+async function playersWithCurrentTeamNames(players) {
+  const plainPlayers = (players || []).map((player) => (
+    typeof player?.toObject === 'function' ? player.toObject() : player
+  ));
+  const teamIds = [...new Set(plainPlayers.map((player) => String(player.teamId || '')).filter(Boolean))];
+  if (!teamIds.length) return plainPlayers.map((player) => ({ ...player, team: '' }));
+  const teams = await Team.find({ _id: { $in: teamIds } }).select('name').lean();
+  const namesById = new Map(teams.map((team) => [String(team._id), team.name]));
+  return plainPlayers.map((player) => ({
+    ...player,
+    team: namesById.get(String(player.teamId || '')) || ''
+  }));
+}
+
+async function playerWithCurrentTeamName(player) {
+  if (!player) return player;
+  const [resolved] = await playersWithCurrentTeamNames([player]);
+  return resolved;
+}
+
+async function teamIsUsedInMatchHistory(teamId) {
+  const CricketMatch = mongoose.models.CricketMatch;
+  if (!CricketMatch) return false;
+  return Boolean(await CricketMatch.exists({
+    $or: [
+      { teamAId: teamId },
+      { teamBId: teamId },
+      { 'teamA.teamId': teamId },
+      { 'teamB.teamId': teamId },
+      { 'innings.battingTeamId': teamId },
+      { 'innings.bowlingTeamId': teamId }
+    ]
+  }));
+}
+
+async function playerIsUsedInMatchHistory(playerId) {
+  const CricketMatch = mongoose.models.CricketMatch;
+  if (!CricketMatch) return false;
+  return Boolean(await CricketMatch.exists({
+    $or: [
+      { 'teamA.players.playerId': playerId },
+      { 'teamB.players.playerId': playerId },
+      { teamAPlayerIds: playerId },
+      { teamBPlayerIds: playerId },
+      { 'innings.lineupEvents.strikerId': playerId },
+      { 'innings.lineupEvents.nonStrikerId': playerId },
+      { 'innings.lineupEvents.bowlerId': playerId },
+      { 'innings.deliveries.strikerId': playerId },
+      { 'innings.deliveries.nonStrikerId': playerId },
+      { 'innings.deliveries.bowlerId': playerId },
+      { 'innings.deliveries.wicket.dismissedBatterId': playerId },
+      { 'awards.manOfMatch.playerId': playerId },
+      { 'awards.bestBowler.playerId': playerId },
+      { manOfMatchPlayerId: playerId },
+      { bestBowlerPlayerId: playerId }
+    ]
+  }));
+}
 const testimonialSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true },
   description: { type: String, default: '' },
@@ -244,7 +455,7 @@ async function connectDatabase() {
   console.log(`Connected to MongoDB (${mongoose.connection.name})`);
 }
 
-async function initializeDatabase() {
+async function initializePlayerData() {
   await Player.updateMany(
     {
       sold: { $ne: true },
@@ -254,24 +465,38 @@ async function initializeDatabase() {
     [{ $set: { playedIn: '$team', team: '' } }]
   );
 
-  for (const category of ['allrounder', 'batsmen', 'bowler', 'wicketkeeper', 'mvp']) {
-    const numberedPlayers = await Player.find({ category, auctionNumber: { $ne: null } }).select('auctionNumber').lean();
-    const usedNumbers = new Set(numberedPlayers.map((player) => player.auctionNumber));
-    let nextNumber = 1;
-    const unnumberedPlayers = await Player.find({
-      category,
-      $or: [{ auctionNumber: { $exists: false } }, { auctionNumber: null }]
-    }).sort({ createdAt: 1 });
-    for (const player of unnumberedPlayers) {
-      while (usedNumbers.has(nextNumber)) nextNumber += 1;
-      player.auctionNumber = nextNumber;
-      usedNumbers.add(nextNumber);
-      await player.save();
-    }
-  }
+  await Promise.all(
+    ['allrounder', 'batsmen', 'bowler', 'wicketkeeper', 'mvp'].map(async (category) => {
+      const [numberedPlayers, unnumberedPlayers] = await Promise.all([
+        Player.find({ category, auctionNumber: { $ne: null } }).select('auctionNumber').lean(),
+        Player.find({
+          category,
+          $or: [{ auctionNumber: { $exists: false } }, { auctionNumber: null }]
+        }).sort({ createdAt: 1 }).select('_id').lean()
+      ]);
+      const usedNumbers = new Set(numberedPlayers.map((player) => player.auctionNumber));
+      let nextNumber = 1;
+      const updates = unnumberedPlayers.map((player) => {
+        while (usedNumbers.has(nextNumber)) nextNumber += 1;
+        const auctionNumber = nextNumber;
+        usedNumbers.add(auctionNumber);
+        nextNumber += 1;
+        return {
+          updateOne: {
+            filter: { _id: player._id },
+            update: { $set: { auctionNumber } }
+          }
+        };
+      });
+
+      if (updates.length) {
+        await Player.bulkWrite(updates, { ordered: false });
+      }
+    })
+  );
 
   const registrationPlayers = await Player.find({ source: 'registration' }).lean();
-  for (const player of registrationPlayers) {
+  const registrationUpdates = registrationPlayers.flatMap((player) => {
     const selectedRoles = parseRoleSelections(player.registrationRoles || []);
     const nextCategory = resolveRegistrationCategory(selectedRoles, player.category || 'allrounder');
     const updates = {};
@@ -279,19 +504,28 @@ async function initializeDatabase() {
       updates.category = nextCategory;
     }
     if (selectedRoles.length) {
-      updates.details = resolveRegistrationDetails(selectedRoles);
+      const nextDetails = resolveRegistrationDetails(selectedRoles);
+      if (nextDetails !== player.details) updates.details = nextDetails;
     }
-    if (Object.keys(updates).length) {
-      await Player.updateOne({ _id: player._id }, { $set: updates });
-    }
-  }
+    return Object.keys(updates).length
+      ? [{ updateOne: { filter: { _id: player._id }, update: { $set: updates } } }]
+      : [];
+  });
 
+  if (registrationUpdates.length) {
+    await Player.bulkWrite(registrationUpdates, { ordered: false });
+  }
+}
+
+async function initializeSettingsData() {
   const settingsCount = await Settings.countDocuments();
   if (settingsCount === 0) {
-    await Settings.create({ backgroundImage: '', logo: '', teams: [] });
-  } else {
-    await Settings.updateMany({ teams: { $exists: false } }, { $set: { teams: [] } });
+    await Settings.create({ backgroundImage: '', logo: '' });
   }
+}
+
+async function initializeDatabase() {
+  await Promise.all([initializePlayerData(), initializeSettingsData()]);
 }
 
 const allowedClientOrigins = new Set(
@@ -307,7 +541,8 @@ app.use(cors({
       return callback(null, true);
     }
     return callback(new Error('Origin is not allowed by CORS'));
-  }
+  },
+  maxAge: 86400
 }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -345,12 +580,30 @@ app.get('/uploads/:filename', async (req, res, next) => {
 
 app.use((req, res, next) => {
   const changesBackendData = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
-    && req.path !== '/api/auction/select';
+    && req.path !== '/api/auction/select'
+    && req.path !== '/api/scorer/session';
+  const changesScoringData = req.path === '/api/matches'
+    || req.path.startsWith('/api/matches/');
 
   if (changesBackendData) {
     res.on('finish', () => {
       if (res.statusCode >= 200 && res.statusCode < 400) {
         dataVersion = Math.max(Date.now(), dataVersion + 1);
+        if (!changesScoringData) auctionDataVersion = dataVersion;
+        const message = `event: version\ndata: ${JSON.stringify({
+          version: dataVersion,
+          auctionVersion: auctionDataVersion,
+          path: req.path,
+          method: req.method,
+          sourceId: String(req.get('x-live-source') || '').slice(0, 100)
+        })}\n\n`;
+        liveDataClients.forEach((client) => {
+          if (client.destroyed || client.writableEnded) {
+            liveDataClients.delete(client);
+          } else {
+            client.write(message);
+          }
+        });
       }
     });
   }
@@ -358,14 +611,46 @@ app.use((req, res, next) => {
 });
 
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
-app.get('/api/data-version', (_req, res) => res.json({ version: dataVersion }));
+app.get('/api/data-version', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ version: dataVersion, auctionVersion: auctionDataVersion });
+});
 
-app.get('/api/categories', async (_req, res) => {
-  const players = await Player.find({
-    sold: { $ne: true },
-    unsold: { $ne: true }
-  }).sort({ category: 1, auctionNumber: 1 }).lean();
-  const visiblePlayers = players.filter((player) => player.source !== 'registration' || player.registrationStatus === 'approved');
+app.get('/api/live-events', (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.flushHeaders?.();
+  liveDataClients.add(res);
+  res.write(`retry: 2000\nevent: version\ndata: ${JSON.stringify({
+    version: dataVersion,
+    auctionVersion: auctionDataVersion
+  })}\n\n`);
+
+  const heartbeat = setInterval(() => {
+    res.write(': keep-alive\n\n');
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    liveDataClients.delete(res);
+  });
+});
+
+require('./scoring').registerScoringRoutes(app, { mongoose, Team, Player, Settings });
+
+const categoryNames = {
+  allrounder: 'All Rounder',
+  batsmen: 'Batsmen',
+  bowler: 'Bowler',
+  wicketkeeper: 'Wicket Keeper',
+  mvp: 'MVP Players'
+};
+
+function buildCategories(players) {
   const categoryMap = {
     allrounder: [],
     batsmen: [],
@@ -374,38 +659,106 @@ app.get('/api/categories', async (_req, res) => {
     mvp: []
   };
 
-  visiblePlayers.forEach((player) => {
+  players.forEach((player) => {
     if (categoryMap[player.category]) {
       categoryMap[player.category].push(player);
     }
   });
 
-  const categoryNames = { allrounder: 'All Rounder', batsmen: 'Batsmen', bowler: 'Bowler', wicketkeeper: 'Wicket Keeper', mvp: 'MVP Players' };
-  const categories = Object.entries(categoryMap).map(([key, entries]) => ({
+  return Object.entries(categoryMap).map(([key, entries]) => ({
     key,
     label: categoryNames[key],
     count: entries.length,
     players: entries
   }));
+}
 
-  res.json({ categories });
+async function loadCategories() {
+  const players = await Player.find({
+    sold: { $ne: true },
+    unsold: { $ne: true },
+    $or: [
+      { source: { $ne: 'registration' } },
+      { registrationStatus: 'approved' }
+    ]
+  }).sort({ category: 1, auctionNumber: 1 }).lean();
+
+  return buildCategories(players);
+}
+
+async function loadPendingRegistrations() {
+  return Player.find({
+    source: 'registration',
+    $or: [{ registrationStatus: { $exists: false } }, { registrationStatus: 'pending' }]
+  }).sort({ createdAt: 1 }).lean();
+}
+
+app.get('/api/categories', async (_req, res) => {
+  res.json({ categories: await loadCategories() });
 });
 
 async function teamsWithStats() {
-  const teams = await Team.find().sort({ name: 1 }).lean();
-  return Promise.all(teams.map(async (team) => {
-    const soldPlayers = await Player.find({ teamId: team._id, sold: true }).lean();
+  const [teams, soldPlayers] = await Promise.all([
+    Team.find().sort({ name: 1 }).lean(),
+    Player.find({ teamId: { $ne: null }, sold: true }).lean()
+  ]);
+  const playersByTeam = new Map();
+
+  soldPlayers.forEach((player) => {
+    const teamKey = String(player.teamId);
+    const teamPlayers = playersByTeam.get(teamKey) || [];
+    teamPlayers.push(player);
+    playersByTeam.set(teamKey, teamPlayers);
+  });
+
+  return teams.map((team) => {
+    const teamPlayers = playersByTeam.get(String(team._id)) || [];
     return {
       ...team,
-      playerCount: soldPlayers.length,
-      spent: soldPlayers.reduce((total, player) => total + Number(player.amount || 0), 0),
-      players: soldPlayers
+      playerCount: teamPlayers.length,
+      spent: teamPlayers.reduce((total, player) => total + Number(player.amount || 0), 0),
+      players: teamPlayers.map((player) => ({ ...player, team: team.name }))
     };
-  }));
+  });
 }
 
 app.get('/api/teams', async (_req, res) => {
   res.json({ teams: await teamsWithStats() });
+});
+
+app.get('/api/bootstrap', async (_req, res) => {
+  const version = dataVersion;
+  const auctionVersion = auctionDataVersion;
+  const [categories, settings, teams, pendingRegistrations] = await Promise.all([
+    loadCategories(),
+    Settings.findOne().lean(),
+    teamsWithStats(),
+    loadPendingRegistrations()
+  ]);
+
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    version,
+    auctionVersion,
+    categories,
+    settings: settings || { backgroundImage: '', logo: '' },
+    teams,
+    pendingRegistrations
+  });
+});
+
+app.get('/api/public/registration-summary', async (_req, res) => {
+  const [settings, registrationCount] = await Promise.all([
+    Settings.findOne().select('logo backgroundImage').lean(),
+    Player.countDocuments({ source: 'registration' })
+  ]);
+
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({
+    logo: settings?.logo || '',
+    backgroundImage: settings?.backgroundImage || '',
+    registrationCount
+  });
 });
 
 app.post('/api/teams', durableUpload(upload.single('teamLogo')), async (req, res) => {
@@ -424,6 +777,7 @@ app.post('/api/teams', durableUpload(upload.single('teamLogo')), async (req, res
 app.put('/api/teams/:id', durableUpload(upload.single('teamLogo')), async (req, res) => {
   const team = await Team.findById(req.params.id);
   if (!team) return res.status(404).json({ message: 'Team not found' });
+  const previousLogo = team.logo;
   const soldPlayers = await Player.find({ teamId: team._id, sold: true }).lean();
   const spent = soldPlayers.reduce((total, player) => total + Number(player.amount || 0), 0);
   const purse = Number(req.body.purse || 0);
@@ -434,13 +788,19 @@ app.put('/api/teams/:id', durableUpload(upload.single('teamLogo')), async (req, 
   if (req.file) team.logo = `/uploads/${req.file.filename}`;
   else if (req.body.logoUrl !== undefined) team.logo = req.body.logoUrl.trim();
   await team.save();
-  await Player.updateMany({ teamId: team._id }, { team: team.name });
+  await Player.updateMany({ teamId: team._id }, { $unset: { team: '' } });
+  await deleteReplacedUpload(previousLogo, team.logo);
   res.json({ message: 'Team updated successfully', team });
 });
 
 app.delete('/api/teams/:id', async (req, res) => {
   const team = await Team.findById(req.params.id);
   if (!team) return res.status(404).json({ message: 'Team not found' });
+  if (await teamIsUsedInMatchHistory(team._id)) {
+    return res.status(409).json({
+      message: 'This team is used in match history and cannot be deleted'
+    });
+  }
   await deleteUploadFile(team.logo);
   await Team.deleteOne({ _id: team._id });
   await Player.updateMany({ teamId: team._id }, { $set: { teamId: null } });
@@ -482,7 +842,7 @@ app.delete('/api/testimonials/:id', async (req, res) => {
 app.get('/api/players/selected', async (_req, res) => {
   const players = await Player.find({ sold: true }).sort({ updatedAt: -1 }).lean();
 
-  res.json({ players });
+  res.json({ players: await playersWithCurrentTeamNames(players) });
 });
 
 app.get('/api/players/unsold', async (_req, res) => {
@@ -492,7 +852,7 @@ app.get('/api/players/unsold', async (_req, res) => {
 
 app.get('/api/players', async (_req, res) => {
   const players = await Player.find().sort({ updatedAt: -1 }).lean();
-  res.json({ players });
+  res.json({ players: await playersWithCurrentTeamNames(players) });
 });
 
 function resolveRegistrationCategory(selectedRoles = [], fallbackCategory = 'allrounder') {
@@ -531,7 +891,7 @@ function resolveRegistrationDetails(selectedRoles = [], fallbackDetails = '') {
 }
 
 app.post('/api/players', durableUpload(upload.single('image')), async (req, res) => {
-  const { name, details, category, playedIn, team, amount, phone, imageUrl } = req.body;
+  const { name, age, details, category, playedIn, team, amount, phone, imageUrl } = req.body;
 
   if (!name?.trim()) {
     return res.status(400).json({ message: 'Player name is required' });
@@ -541,12 +901,12 @@ app.post('/api/players', durableUpload(upload.single('image')), async (req, res)
   const highestNumberPlayer = await Player.findOne({ category: normalizedCategory }).sort({ auctionNumber: -1 }).select('auctionNumber').lean();
   const player = await Player.create({
     name: name.trim(),
+    age: age ? Number(age) : undefined,
     image: req.file ? `/uploads/${req.file.filename}` : imageUrl?.trim() || '',
     details: details?.trim() || '',
     category: normalizedCategory,
     auctionNumber: Number(highestNumberPlayer?.auctionNumber || 0) + 1,
     playedIn: playedIn?.trim() || team?.trim() || '',
-    team: '',
     amount: Number(amount || 0),
     phone: phone?.trim() || '',
     sold: false,
@@ -558,10 +918,13 @@ app.post('/api/players', durableUpload(upload.single('image')), async (req, res)
 });
 
 app.get('/api/players/registrations/pending', async (_req, res) => {
-  const registrations = await Player.find({
-    source: 'registration',
-    $or: [{ registrationStatus: { $exists: false } }, { registrationStatus: 'pending' }]
-  }).sort({ createdAt: 1 }).lean();
+  res.json({ registrations: await loadPendingRegistrations() });
+});
+
+app.get('/api/players/registrations', async (_req, res) => {
+  const registrations = await Player.find({ source: 'registration' })
+    .sort({ createdAt: -1 })
+    .lean();
 
   res.json({ registrations });
 });
@@ -590,8 +953,10 @@ app.patch('/api/players/:id/approve', async (req, res) => {
 app.post('/api/players/register', durableUpload(upload.fields([{ name: 'image', maxCount: 1 }, { name: 'paymentReceipt', maxCount: 1 }])), async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
+    const age = Number(req.body.age);
     const phone = String(req.body.phone || '').trim();
     const playedIn = String(req.body.playedIn || req.body.previouslyPlayedIn || '').trim();
+    const tshirtSize = String(req.body.tshirtSize || '').trim();
     const selectedRoles = parseRoleSelections(req.body.roles);
     const imageFile = req.files?.image?.[0];
     const paymentFile = req.files?.paymentReceipt?.[0];
@@ -599,11 +964,17 @@ app.post('/api/players/register', durableUpload(upload.fields([{ name: 'image', 
     if (!name) {
       return res.status(400).json({ message: 'Player name is required' });
     }
+    if (!Number.isInteger(age) || age < 1) {
+      return res.status(400).json({ message: 'Please enter a valid age' });
+    }
     if (!phone) {
       return res.status(400).json({ message: 'Phone number is required' });
     }
     if (!playedIn) {
       return res.status(400).json({ message: 'Previously played information is required' });
+    }
+    if (!/^\d+$/.test(tshirtSize) || Number(tshirtSize) < 1) {
+      return res.status(400).json({ message: 'Please enter a valid numeric T-shirt size' });
     }
     if (!selectedRoles.length) {
       return res.status(400).json({ message: 'Please select at least one role for the player' });
@@ -619,14 +990,15 @@ app.post('/api/players/register', durableUpload(upload.fields([{ name: 'image', 
     const highestNumberPlayer = await Player.findOne({ category: normalizedCategory }).sort({ auctionNumber: -1 }).select('auctionNumber').lean();
     const player = await Player.create({
       name,
+      age,
       image: imageFile ? `/uploads/${imageFile.filename}` : '',
       details: resolveRegistrationDetails(selectedRoles),
       category: normalizedCategory,
       auctionNumber: Number(highestNumberPlayer?.auctionNumber || 0) + 1,
       playedIn: playedIn || '',
-      team: '',
       amount: 0,
       phone,
+      tshirtSize,
       sold: false,
       unsold: false,
       source: 'registration',
@@ -646,13 +1018,14 @@ app.post('/api/players/register', durableUpload(upload.fields([{ name: 'image', 
 });
 
 app.put('/api/players/:id', durableUpload(upload.single('image')), async (req, res) => {
-  const { name, details, category, playedIn, team, amount, phone, image, imageUrl } = req.body;
+  const { name, age, details, category, playedIn, team, amount, phone, image, imageUrl } = req.body;
   if (!name?.trim()) {
     return res.status(400).json({ message: 'Player name is required' });
   }
 
   const existingPlayer = await Player.findById(req.params.id);
   if (!existingPlayer) return res.status(404).json({ message: 'Player not found' });
+  const previousImage = existingPlayer.image;
   const normalizedCategory = normalizeCategory(category);
   let auctionNumber = existingPlayer.auctionNumber;
   if (normalizedCategory !== existingPlayer.category) {
@@ -670,19 +1043,30 @@ app.put('/api/players/:id', durableUpload(upload.single('image')), async (req, r
     if (!updatedTeam) return res.status(400).json({ message: 'Team does not have enough purse for the updated bid amount' });
   }
 
-  const player = await Player.findByIdAndUpdate(req.params.id, {
-    name: name.trim(),
-    details: details?.trim() || '',
-    category: normalizedCategory,
-    auctionNumber,
-    playedIn: playedIn?.trim() || (!existingPlayer.sold ? team?.trim() : '') || existingPlayer.playedIn || '',
-    team: existingPlayer.sold ? existingPlayer.team : '',
-    amount: nextAmount,
-    phone: phone?.trim() || existingPlayer.phone || '',
-    image: req.file ? `/uploads/${req.file.filename}` : imageUrl?.trim() || image?.trim() || existingPlayer.image || ''
-  }, { new: true, runValidators: true });
+  const player = await Player.findByIdAndUpdate(
+    req.params.id,
+    {
+      $set: {
+        name: name.trim(),
+        age: age ? Number(age) : existingPlayer.age,
+        details: details?.trim() || '',
+        category: normalizedCategory,
+        auctionNumber,
+        playedIn: playedIn?.trim() || (!existingPlayer.sold ? team?.trim() : '') || existingPlayer.playedIn || '',
+        amount: nextAmount,
+        phone: phone?.trim() || existingPlayer.phone || '',
+        image: req.file ? `/uploads/${req.file.filename}` : imageUrl?.trim() || image?.trim() || existingPlayer.image || ''
+      },
+      $unset: { team: '' }
+    },
+    { new: true, runValidators: true }
+  );
 
-  res.json({ message: 'Player updated successfully', player });
+  await deleteReplacedUpload(previousImage, player.image);
+  res.json({
+    message: 'Player updated successfully',
+    player: await playerWithCurrentTeamName(player)
+  });
 });
 
 app.patch('/api/players/:id/status', async (req, res) => {
@@ -701,16 +1085,27 @@ app.patch('/api/players/:id/status', async (req, res) => {
   }
   if (req.body.status !== 'sold') {
     updates.teamId = null;
-    updates.team = '';
   }
-  const player = await Player.findByIdAndUpdate(req.params.id, updates, { new: true });
+  const player = await Player.findByIdAndUpdate(
+    req.params.id,
+    { $set: updates, $unset: { team: '' } },
+    { new: true }
+  );
   if (!player) return res.status(404).json({ message: 'Player not found' });
-  res.json({ message: `Player marked as ${req.body.status}`, player });
+  res.json({
+    message: `Player marked as ${req.body.status}`,
+    player: await playerWithCurrentTeamName(player)
+  });
 });
 
 app.delete('/api/players/:id', async (req, res) => {
   const player = await Player.findById(req.params.id);
   if (!player) return res.status(404).json({ message: 'Player not found' });
+  if (await playerIsUsedInMatchHistory(player._id)) {
+    return res.status(409).json({
+      message: 'This player is used in match history and cannot be deleted'
+    });
+  }
   if (player.sold && player.teamId) {
     await Team.findByIdAndUpdate(player.teamId, { $inc: { remainingPurse: Number(player.amount || 0) } });
   }
@@ -725,6 +1120,7 @@ app.post('/api/excel/import', durableUpload(upload.single('excelFile')), async (
   }
 
   try {
+    const XLSX = getXlsx();
     const workbook = XLSX.readFile(req.file.path);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
@@ -744,7 +1140,6 @@ app.post('/api/excel/import', durableUpload(upload.single('excelFile')), async (
       details: row[columns.details] || row.details || row.description || row.role || 'Imported player',
       category: normalizeCategory(row[columns.category] || row.category || row.type || 'allrounder'),
       playedIn: row[columns.team] || row.team || '',
-      team: '',
       amount: Number(row[columns.amount] || row.amount || 0),
       phone: String(row[columns.phone] || row.phone || row.phoneNumber || '').trim(),
       sold: false,
@@ -773,6 +1168,7 @@ app.post('/api/excel/import', durableUpload(upload.single('excelFile')), async (
 });
 
 app.get('/api/excel/template', (req, res) => {
+  const XLSX = getXlsx();
   const columns = {
     [req.query.nameColumn || 'name']: 'Sample Player',
     [req.query.categoryColumn || 'category']: 'allrounder',
@@ -838,18 +1234,26 @@ app.post('/api/auction/bid', async (req, res) => {
   }
 
   player.amount = bidAmount;
-  player.team = selectedTeam?.name || '';
+  player.team = undefined;
   player.teamId = selectedTeam?._id || null;
   player.sold = status === 'sold';
   player.unsold = status === 'unsold';
   player.category = normalizedCategory;
   await player.save();
+  await Player.updateOne({ _id: player._id }, { $unset: { team: '' } });
 
   if (status === 'sold') {
     await Player.findByIdAndUpdate(playerId, { sold: true, unsold: false });
   }
 
-  res.json({ message: 'Bid saved', category: normalizedCategory, player });
+  res.json({
+    message: 'Bid saved',
+    category: normalizedCategory,
+    player: {
+      ...player.toObject(),
+      team: selectedTeam?.name || ''
+    }
+  });
 });
 
 app.get('/api/settings', async (_req, res) => {
@@ -860,16 +1264,19 @@ app.get('/api/settings', async (_req, res) => {
 app.post('/api/settings/welcome-video', durableUpload(upload.single('welcomeVideo')), async (req, res) => {
   if (!req.file) return res.status(400).json({ message: 'Choose a video file to upload' });
   const welcomeVideo = `/uploads/${req.file.filename}`;
+  const current = await Settings.findOne().lean();
   const settings = await Settings.findOneAndUpdate(
     {},
     { $set: { welcomeVideo } },
     { new: true, upsert: true, setDefaultsOnInsert: true }
   );
+  await deleteReplacedUpload(current?.welcomeVideo, welcomeVideo);
   res.json({ message: 'Welcome video saved successfully', welcomeVideo, settings });
 });
 
 app.post('/api/settings', durableUpload(upload.any()), async (req, res) => {
   const current = await Settings.findOne();
+  const previousUploadPaths = collectUploadPaths(current?.toObject() || {});
   const uploadedFiles = req.files || [];
   const backgroundFile = uploadedFiles.find((file) => file.fieldname === 'backgroundImage');
   const logoFile = uploadedFiles.find((file) => file.fieldname === 'logo');
@@ -882,18 +1289,6 @@ app.post('/api/settings', durableUpload(upload.any()), async (req, res) => {
     wicketkeeper: uploadedFiles.find((file) => file.fieldname === 'categoryImage_wicketkeeper'),
     mvp: uploadedFiles.find((file) => file.fieldname === 'categoryImage_mvp')
   };
-  const teamNames = Array.isArray(req.body.teamName) ? req.body.teamName : req.body.teamName ? [req.body.teamName] : [];
-  const existingTeamLogos = Array.isArray(req.body.existingTeamLogo) ? req.body.existingTeamLogo : req.body.existingTeamLogo ? [req.body.existingTeamLogo] : [];
-  const teams = teamNames
-    .map((name, index) => {
-      const teamLogoFile = uploadedFiles.find((file) => file.fieldname === `teamLogo_${index}`);
-      return {
-        name: String(name || '').trim(),
-        logo: teamLogoFile ? `/uploads/${teamLogoFile.filename}` : existingTeamLogos[index] || ''
-      };
-    })
-    .filter((team) => team.name);
-
   const nextSettings = {
     backgroundImage: backgroundFile ? `/uploads/${backgroundFile.filename}` : current?.backgroundImage || '',
     logo: logoFile ? `/uploads/${logoFile.filename}` : current?.logo || '',
@@ -908,8 +1303,7 @@ app.post('/api/settings', durableUpload(upload.any()), async (req, res) => {
       bowler: categoryImageFiles.bowler ? `/uploads/${categoryImageFiles.bowler.filename}` : current?.categoryImages?.bowler || '',
       wicketkeeper: categoryImageFiles.wicketkeeper ? `/uploads/${categoryImageFiles.wicketkeeper.filename}` : current?.categoryImages?.wicketkeeper || '',
       mvp: categoryImageFiles.mvp ? `/uploads/${categoryImageFiles.mvp.filename}` : current?.categoryImages?.mvp || ''
-    },
-    teams
+    }
   };
 
   if (current) {
@@ -918,10 +1312,20 @@ app.post('/api/settings', durableUpload(upload.any()), async (req, res) => {
     await Settings.create(nextSettings);
   }
 
+  const nextUploadPatterns = new Set(
+    [...collectUploadPaths(nextSettings)].map((filePath) => String(uploadPathPattern(filePath)))
+  );
+  await Promise.all(
+    [...previousUploadPaths]
+      .filter((filePath) => !nextUploadPatterns.has(String(uploadPathPattern(filePath))))
+      .map((filePath) => deleteReplacedUpload(filePath, ''))
+  );
+
   res.json(nextSettings);
 });
 
 app.get('/api/export/excel', async (_req, res) => {
+  const XLSX = getXlsx();
   const workbook = XLSX.utils.book_new();
   const players = await Player.find({ sold: true }).lean();
   const teams = await Team.find().sort({ name: 1 }).lean();
@@ -931,10 +1335,12 @@ app.get('/api/export/excel', async (_req, res) => {
       .filter((player) => String(player.teamId || '') === String(team._id))
       .map((player) => ({
         Name: player.name,
+        Age: player.age || '',
         Category: player.category,
         Amount: player.amount,
         'Phone Number': player.phone || '',
-        Team: player.team || team.name
+        'T-Shirt Size': player.tshirtSize || '',
+        Team: team.name
       }));
 
     const sheet = XLSX.utils.json_to_sheet(sheetData);
@@ -956,8 +1362,7 @@ app.get('/api/export/excel', async (_req, res) => {
 async function startServer() {
   try {
     await connectDatabase();
-    await migrateLocalUploads();
-    await initializeDatabase();
+    await Promise.all([migrateLocalUploads(), initializeDatabase()]);
     app.listen(PORT, () => {
       console.log(`Auction server running at http://localhost:${PORT}`);
     });
