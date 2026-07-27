@@ -2140,6 +2140,7 @@ function ScorerMatchConsole({ logo, backgroundImage, session }) {
     const warnBeforeUnload = (event) => {
       event.preventDefault();
       event.returnValue = '';
+      
     };
     window.addEventListener('beforeunload', warnBeforeUnload);
     return () => window.removeEventListener('beforeunload', warnBeforeUnload);
