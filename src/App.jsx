@@ -234,8 +234,8 @@ function MatchRecordsPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState('');
+  const [downloadingId, setDownloadingId] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [exportedIds, setExportedIds] = useState(() => new Set());
 
   const loadMatches = async () => {
     setLoading(true);
@@ -255,11 +255,32 @@ function MatchRecordsPage() {
   useEffect(() => { loadMatches(); }, []);
   useLiveDataRefresh(loadMatches);
 
-  const exportMatch = (match) => {
+  const downloadMatchExcel = async (match) => {
     const matchId = match._id || match.id;
-    window.open(`${API}/matches/${matchId}/export`, '_blank', 'noopener,noreferrer');
-    setExportedIds((current) => new Set([...current, matchId]));
-    setFeedback('Match Excel export started. Keep the downloaded file as the permanent scoring backup.');
+    setDownloadingId(matchId);
+    setFeedback('');
+    try {
+      const response = await fetch(`${API}/matches/${matchId}/excel`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Unable to download match Excel.');
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      const fileName = disposition.match(/filename="?([^";]+)"?/i)?.[1] || 'match-record.xlsx';
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setFeedback(error.message || 'Unable to download match Excel.');
+    } finally {
+      setDownloadingId('');
+    }
   };
 
   const deleteMatch = async (match) => {
@@ -268,14 +289,8 @@ function MatchRecordsPage() {
       return;
     }
     const label = match.title || `${match.teamA?.name || 'Team A'} vs ${match.teamB?.name || 'Team B'}`;
-    const matchId = match._id || match.id;
-    if (!exportedIds.has(matchId)) {
-      exportMatch(match);
-      setFeedback(`Excel export for "${label}" started. After it downloads, click Delete record again to confirm permanent deletion.`);
-      return;
-    }
     if (!window.confirm(`Delete "${label}" permanently? All innings, scores, and ball history for this match will be removed.`)) return;
-    setDeletingId(matchId);
+    setDeletingId(match._id || match.id);
     setFeedback('');
     try {
       const response = await fetch(`${API}/matches/${match._id || match.id}`, {
@@ -315,25 +330,30 @@ function MatchRecordsPage() {
           const matchId = match._id || match.id;
           const teamA = match.teamA?.name || 'Team A';
           const teamB = match.teamB?.name || 'Team B';
+          const inningsScores = match.inningsSummaries || [];
           const manOfMatch = match.awards?.manOfMatch || match.awards?.manOfTheMatch;
           return <article key={matchId} className="match-record-row">
             <div>
-              <span className={`match-record-status ${String(match.status || '').toLowerCase()}`}>{String(match.status || 'scheduled').replaceAll('_', ' ')}</span>
               <h3>{match.title || `${teamA} vs ${teamB}`}</h3>
               <p>{teamA} vs {teamB} · {match.oversPerInnings || '—'} overs</p>
               <small>{match.scheduledAt ? new Date(match.scheduledAt).toLocaleString() : 'Schedule not set'}</small>
               {match.result?.text ? <p className="match-record-result"><strong>Result:</strong> {match.result.text}</p> : null}
-              {manOfMatch ? <p className="match-record-award"><strong>Man of the Match:</strong> {manOfMatch.name || 'Player'}</p> : null}
-              {match.inningsSummaries?.length ? <div className="match-record-innings">
-                {match.inningsSummaries.map((innings, index) => <span key={innings.number || index}><strong>{innings.battingTeam?.name || `Innings ${index + 1}`}</strong>{Number(innings.totalRuns || 0)}/{Number(innings.wickets || 0)} <small>({innings.overs || '0.0'} ov)</small></span>)}
+              {inningsScores.length ? <div className="match-record-innings">
+                {inningsScores.map((innings, index) => <span key={innings.number || index}>
+                  <strong>{innings.battingTeam?.name || `Innings ${index + 1}`}</strong>
+                  <b>{Number(innings.totalRuns || 0)}/{Number(innings.wickets || 0)}</b>
+                  <small>({innings.overs || '0.0'} ov)</small>
+                </span>)}
               </div> : null}
+              {manOfMatch ? <p className="match-record-award"><strong>Man of the Match:</strong> {manOfMatch.name || manOfMatch.player?.name || 'Not selected'}</p> : null}
             </div>
             <div className="match-record-actions">
-              <Link to={`/matches/${matchId}`}>Viewer scorecard</Link>
               <Link to={`/scorer/${matchId}`}>View in scorer</Link>
-              <button className="ghost" type="button" onClick={() => exportMatch(match)}>{exportedIds.has(matchId) ? 'Export again' : 'Export Excel'}</button>
+              <button type="button" disabled={downloadingId === matchId} onClick={() => downloadMatchExcel(match)}>
+                {downloadingId === matchId ? 'Downloading...' : 'Download Excel'}
+              </button>
               <button className="danger-button" type="button" disabled={deletingId === matchId} onClick={() => deleteMatch(match)}>
-                {deletingId === matchId ? 'Deleting...' : exportedIds.has(matchId) ? 'Delete record' : 'Export before delete'}
+                {deletingId === matchId ? 'Deleting...' : 'Delete record'}
               </button>
             </div>
           </article>;
@@ -1053,7 +1073,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
           </div>
         ) : null}
         {feedback ? <p className="feedback">{feedback}</p> : null}
-        <footer className="register-footer">Raipur Malayalee Premier League · Official Player Registration Site<p>Designed by KVM</p></footer>
+        <footer className="register-footer">Raipur Malayalee Premier League <p>Designed by KVM</p></footer>
       </form>
 
       {registrationSuccess ? (
