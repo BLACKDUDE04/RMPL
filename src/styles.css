@@ -1048,6 +1048,11 @@ button {
   text-transform: uppercase;
 }
 
+.register-footer p {
+  margin: 6px 0 0;
+  text-align: center;
+}
+
 .entry-card {
   display: flex;
   flex-direction: column;
@@ -3511,35 +3516,48 @@ button {
   color: #64748b;
 }
 
-.match-record-row .match-record-result {
-  margin-top: 9px;
-  color: #166534;
-}
-
-.match-record-row .match-record-award {
-  margin-top: 4px;
-  color: #92400e;
-}
-
 .match-record-innings {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.match-record-innings > span {
   display: grid;
-  gap: 2px;
-  min-width: 145px;
-  padding: 8px 10px;
-  color: #0f172a;
-  background: #f1f5f9;
-  border-radius: 9px;
+  grid-template-columns: repeat(2, minmax(125px, 1fr));
+  gap: 0.5rem;
+  margin: 0.65rem 0 0.25rem;
 }
 
-.match-record-innings > span strong {
+.match-record-innings span {
+  display: flex;
+  flex-direction: column;
+  padding: 0.65rem;
+  color: #1f2937;
+  background: #f8fafc;
+  border-radius: 0.65rem;
+}
+
+.match-record-innings strong {
   font-size: 0.75rem;
+}
+
+.match-record-innings b {
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.15;
+}
+
+.match-record-innings small {
+  color: #64748b;
+}
+
+.match-record-result,
+.match-record-award {
+  margin-top: 0.3rem !important;
+}
+
+.match-record-result {
+  margin-top: 0.65rem !important;
+  color: #166534 !important;
+}
+
+.match-record-award {
+  color: #92400e !important;
 }
 
 .match-record-status {
@@ -3568,7 +3586,6 @@ button {
 .match-record-actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   flex: 0 0 auto;
   gap: 10px;
 }
