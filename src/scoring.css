@@ -3534,6 +3534,157 @@
   }
 }
 
+/* Consistent phone behaviour across match centre, viewer and scorer. */
+@media (max-width: 700px) {
+  .cricket-shell,
+  .cricket-page,
+  .cricket-page > *,
+  .cricket-match-card,
+  .public-score-hero,
+  .scorecard-section,
+  .commentary-panel,
+  .scorer-setup-panel,
+  .quick-scoring,
+  .delivery-editor,
+  .delivery-history,
+  .complete-match-panel,
+  .innings-transition,
+  form,
+  fieldset,
+  label,
+  div {
+    min-width: 0;
+  }
+
+  .cricket-shell img,
+  .cricket-shell video,
+  .cricket-shell iframe {
+    max-width: 100%;
+  }
+
+  .cricket-shell h1,
+  .cricket-shell h2,
+  .cricket-shell h3,
+  .cricket-shell p,
+  .cricket-shell strong,
+  .cricket-shell span,
+  .cricket-shell a {
+    overflow-wrap: anywhere;
+  }
+
+  .cricket-topbar {
+    gap: 8px;
+  }
+
+  .cricket-brand {
+    min-width: 0;
+  }
+
+  .cricket-topbar nav {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  .cricket-footer {
+    padding-inline: 12px;
+    text-align: center;
+  }
+
+  .match-filter-tabs,
+  .registration-live-scroll,
+  .recent-deliveries,
+  .innings-tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .match-filter-tabs > *,
+  .innings-tabs > * {
+    flex: 0 0 auto;
+  }
+
+  .cricket-match-card-title,
+  .cricket-card-team,
+  .live-now-panel > header,
+  .quick-scoring > header,
+  .delivery-history > header,
+  .scorer-full-scorecard > header {
+    min-width: 0;
+  }
+
+  .cricket-view-button,
+  .advanced-score-toggle,
+  .undo-delivery,
+  .lineup-toggle,
+  .create-match-submit,
+  .delivery-submit {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  .next-bowler-popup,
+  .viewer-player-announcement > section,
+  .scorer-login-card {
+    width: min(100%, 560px);
+    max-height: calc(100dvh - 20px);
+    overflow-y: auto;
+  }
+
+  .match-leaderboard-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .participant-selectors select,
+  .delivery-editor input,
+  .delivery-editor select,
+  .delivery-editor textarea,
+  .create-match-form input,
+  .create-match-form select,
+  .next-bowler-popup select {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .cricket-page {
+    width: calc(100% - 10px);
+  }
+
+  .cricket-topbar nav a,
+  .cricket-topbar nav button {
+    padding-inline: 7px;
+  }
+
+  .run-buttons {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .extra-buttons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .commentary-list article,
+  .delivery-history-list article {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .commentary-list article > i,
+  .delivery-history-list article > i {
+    grid-row: span 2;
+  }
+
+  .commentary-list article > p,
+  .delivery-history-list article > p,
+  .delivery-history-list article > button {
+    grid-column: 2;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .next-bowler-popup,
   .delivery-celebration,
