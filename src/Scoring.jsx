@@ -703,6 +703,7 @@ function CricketShell({ logo, backgroundImage, scorer = false, onLogout, childre
           <Link to={scorer ? '/scorer' : '/matches'}>{scorer ? 'Matches' : 'Match centre'}</Link>
           {!scorer ? <Link to="/register">Registration</Link> : null}
           {scorer && onLogout ? <button type="button" onClick={onLogout}>Lock scorer</button> : null}
+          <Link to={scorer ? '/scorer/leaderboard' : '/leaderboard'}>Leaderboard</Link>
         </nav>
       </header>
       {children}
@@ -823,8 +824,6 @@ export function MatchesPage({ logo, backgroundImage }) {
           </div>
         </section>
 
-        <TeamLeaderboard matches={matches} />
-
         <div className="match-filter-tabs" role="tablist" aria-label="Filter matches">
           {[
             ['all', 'All'],
@@ -851,6 +850,61 @@ export function MatchesPage({ logo, backgroundImage }) {
         {visible.length ? <div className="match-centre-grid">{visible.map((match) => <MatchCard key={match._id || match.id} match={match} />)}</div> : null}
       </main>
     </CricketShell>
+  );
+}
+
+export function LeaderboardPage({ logo, backgroundImage, scorerSession = null }) {
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const loadGenerationRef = useRef(0);
+
+  const load = useCallback(async ({ quiet = false } = {}) => {
+    const generation = ++loadGenerationRef.current;
+    if (!quiet) setLoading(true);
+    try {
+      const data = await fetchAllMatches();
+      if (generation !== loadGenerationRef.current) return;
+      setMatches(data.matches || []);
+      setError('');
+    } catch (loadError) {
+      if (generation !== loadGenerationRef.current) return;
+      setError(loadError.message || 'Unable to load the leaderboard.');
+    } finally {
+      if (generation === loadGenerationRef.current) setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+    return () => { loadGenerationRef.current += 1; };
+  }, [load]);
+  useScoringLiveRefresh(load, { connectStream: false });
+
+  return (
+    <CricketShell logo={logo} backgroundImage={backgroundImage} scorer={Boolean(scorerSession)} onLogout={scorerSession?.logout}>
+      <main className="cricket-page leaderboard-page">
+        <section className="match-centre-hero leaderboard-hero">
+          <div>
+            <span className="cricket-kicker">{scorerSession ? 'SCORER TEAM STANDINGS' : 'RMPL TEAM STANDINGS'}</span>
+            <h1>{scorerSession ? 'Scorer leaderboard' : 'Leaderboard'}</h1>
+            <p>Team rankings calculated from all saved match results.</p>
+          </div>
+        </section>
+        {loading ? <ScoreLoading label="Loading leaderboard…" /> : null}
+        {error && !matches.length ? <ScoreError message={error} retry={load} /> : null}
+        {!loading && !error && !matches.length ? <ScoreEmpty title="No standings yet" text="Leaderboard rankings will appear after matches are created." /> : null}
+        {matches.length ? <TeamLeaderboard matches={matches} /> : null}
+      </main>
+    </CricketShell>
+  );
+}
+
+export function ScorerLeaderboardPage({ logo, backgroundImage }) {
+  return (
+    <ScorerProtected logo={logo} backgroundImage={backgroundImage}>
+      {(session) => <LeaderboardPage logo={logo} backgroundImage={backgroundImage} scorerSession={session} />}
+    </ScorerProtected>
   );
 }
 
@@ -1480,8 +1534,6 @@ function ScorerDashboard({ logo, backgroundImage, session }) {
           <div><span className="cricket-kicker">SCORING CONTROL</span><h1>Match scoring</h1><p>Each match keeps its own innings and delivery history, so multiple matches can run at the same time.</p></div>
           <button type="button" onClick={() => setShowCreate((shown) => !shown)}>{showCreate ? 'Close setup' : '+ Create match'}</button>
         </section>
-
-        <TeamLeaderboard matches={matches} scorer />
 
         {showCreate ? <form className="create-match-form" onSubmit={createMatch}>
           <header><div><span>NEW MATCH</span><h2>Match setup</h2></div><small>Teams and players are loaded from the database.</small></header>
