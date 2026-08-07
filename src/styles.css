@@ -792,11 +792,22 @@ nav a:hover {
 }
 
 .reshow-player-button {
-  width: 100%;
-  margin-top: 12px;
+  flex: 1 1 280px;
   color: white;
   background: #16a34a;
   animation: reshowPulse 1.4s ease-in-out infinite;
+}
+
+.reshow-player-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.cancel-reshow-button {
+  flex: 0 0 auto;
+  color: white;
+  background: #dc2626;
 }
 
 @keyframes reshowPulse {
@@ -916,24 +927,29 @@ nav a:hover {
 }
 
 .selected-player-card.with-team-finances {
-  grid-template-columns: minmax(260px, .9fr) minmax(280px, .9fr) minmax(280px, .75fr);
+  grid-template-columns: minmax(240px, .8fr) minmax(270px, .85fr) minmax(420px, 1.15fr);
   gap: clamp(18px, 2.5vw, 34px);
   padding-inline: clamp(24px, 3vw, 52px);
+  overflow-y: auto;
 }
 
 .auction-team-finances {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 8px;
   align-self: stretch;
-  max-height: 84dvh;
-  overflow-y: auto;
+  max-height: none;
+  overflow: visible;
   padding: 14px;
   background: rgba(2, 6, 23, .74);
   border: 1px solid rgba(148, 163, 184, .25);
   border-radius: 18px;
 }
 
-.auction-team-finances-heading { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.auction-team-finances-heading { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 10px; margin-bottom: 2px; }
 .auction-team-finances-heading span { color: #94a3b8; font-size: .78rem; }
-.auction-team-balance { display: block; width: 100%; margin: 0 0 8px; padding: 10px; color: #e2e8f0; background: rgba(30, 41, 59, .8); border: 1px solid transparent; text-align: left; }
+.auction-team-balance { display: block; width: 100%; margin: 0; padding: 9px; color: #e2e8f0; background: rgba(30, 41, 59, .8); border: 1px solid transparent; text-align: left; }
 .auction-team-balance.selected { border-color: #fbbf24; box-shadow: 0 0 0 1px rgba(251, 191, 36, .25); }
 .auction-team-balance:disabled { opacity: .48; cursor: not-allowed; }
 .auction-team-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; }
@@ -2176,24 +2192,20 @@ button {
 }
 
 .purse-stats-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
   gap: 18px;
-  padding-bottom: 14px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
 }
 
 .purse-stats-grid .purse-card {
-  flex: 0 0 min(390px, 86vw);
-  scroll-snap-align: start;
+  min-width: 0;
 }
 
 .purse-card-link {
-  flex: 0 0 min(390px, 86vw);
+  min-width: 0;
   color: inherit;
   text-decoration: none;
-  scroll-snap-align: start;
 }
 
 .purse-card-link .purse-card {
@@ -2577,6 +2589,24 @@ button {
     grid-template-columns: minmax(240px, 0.9fr) minmax(280px, 1.1fr);
     gap: 22px;
     padding: 24px;
+  }
+
+  .selected-player-card.with-team-finances {
+    grid-template-columns: minmax(220px, 0.8fr) minmax(280px, 1.2fr);
+    align-items: start;
+    overflow-y: auto;
+  }
+
+  .auction-team-finances {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .purse-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .category-cards {
@@ -3174,7 +3204,16 @@ button {
   }
 
   .selected-player-card.with-team-finances .player-card-details { overflow: visible; }
-  .auction-team-finances { width: 100%; max-height: none; }
+  .auction-team-finances {
+    grid-column: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    max-height: none;
+  }
+
+  .purse-stats-grid {
+    grid-template-columns: 1fr;
+  }
 
   .selected-player-card img {
     width: 100%;
@@ -3422,7 +3461,7 @@ button {
 
   .purse-stats-grid .purse-card,
   .purse-card-link {
-    flex-basis: min(330px, 88vw);
+    width: 100%;
   }
 
   .spend-progress-label,
