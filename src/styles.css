@@ -944,6 +944,8 @@ nav a:hover {
 .auction-expense-track { height: 6px; overflow: hidden; margin-top: 9px; background: #334155; border-radius: 99px; }
 .auction-expense-track i { display: block; height: 100%; background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444); border-radius: inherit; }
 .auction-team-meta { display: flex; justify-content: space-between; margin-top: 5px; color: #94a3b8; font-size: .66rem; }
+.auction-safe-limit { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 7px; padding-top: 7px; border-top: 1px solid rgba(148, 163, 184, .18); color: #bfdbfe; font-size: .72rem; }
+.auction-safe-limit strong { color: #fbbf24; font-size: .78rem; }
 .bid-limit-note { width: 100%; margin: 0; color: #bfdbfe; font-size: .82rem; }
 
 .selected-number-badge {
