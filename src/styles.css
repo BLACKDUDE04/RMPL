@@ -3707,6 +3707,213 @@ button {
   }
 }
 
+/* Final mobile hardening shared by registration, auction and admin pages. */
+@media (max-width: 700px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body,
+  #root,
+  .app-shell,
+  main,
+  section,
+  article,
+  form,
+  fieldset,
+  label,
+  div {
+    min-width: 0;
+  }
+
+  img,
+  video,
+  iframe {
+    max-width: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    max-width: 100%;
+    min-height: 46px;
+    font-size: 16px;
+  }
+
+  button,
+  .back-link,
+  .team-view-button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  h1,
+  h2,
+  h3,
+  p,
+  strong,
+  span,
+  a {
+    overflow-wrap: anywhere;
+  }
+
+  .app-shell {
+    width: 100%;
+    padding: 10px;
+    overflow-x: clip;
+  }
+
+  .topbar,
+  .page-heading,
+  .page-heading-actions,
+  .pending-registrations-header,
+  .settings-section-heading,
+  .purse-team-heading,
+  .team-detail-title {
+    width: 100%;
+  }
+
+  .page-heading,
+  .page-heading-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-heading-actions > *,
+  .page-heading > .back-link {
+    width: 100%;
+    text-align: center;
+  }
+
+  nav {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  nav a,
+  nav button {
+    flex: 1 1 130px;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .panel,
+  .categories-panel,
+  .auction-panel,
+  .registration-page,
+  .settings-section,
+  .player-editor,
+  .team-form,
+  .testimonial-form {
+    max-width: 100%;
+    padding: 14px;
+  }
+
+  .all-players-grid,
+  .selected-players-grid,
+  .teams-grid,
+  .team-squad-grid,
+  .team-settings-grid,
+  .category-settings-grid,
+  .pending-registrations-list,
+  .registration-data-grid,
+  .purse-stats-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .players-filter-bar,
+  .category-filter,
+  .team-filter,
+  .registration-data-search {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  .team-filter,
+  .player-search,
+  .management-actions,
+  .registration-data-actions,
+  .settings-save-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .team-filter select,
+  .management-actions button,
+  .registration-data-actions button,
+  .settings-save-bar button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .database-player-card,
+  .registered-player-card,
+  .squad-player-card,
+  .result-player-card,
+  .pending-registration-card {
+    width: 100%;
+  }
+
+  .purse-numbers > div,
+  .team-detail-stats {
+    gap: 8px;
+  }
+
+  .player-modal-backdrop,
+  .registration-success-backdrop,
+  .registration-preview-backdrop {
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .unsold-sale-modal,
+  .edit-player-modal,
+  .registration-success-popup,
+  .registration-preview {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+  }
+
+  .event-cover,
+  .event-gallery img,
+  .previous-winner img {
+    height: auto;
+    max-height: 72dvh;
+  }
+
+  .reshow-player-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reshow-player-button,
+  .cancel-reshow-button {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+}
+
+@media (max-width: 420px) {
+  .auction-team-finances {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .selected-player-card.with-team-finances {
+    padding-inline: 8px;
+  }
+
+  .auction-team-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .auction-team-row > strong {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
