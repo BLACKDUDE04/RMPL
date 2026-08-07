@@ -822,6 +822,17 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
     setFeedback(`${hiddenPlayer.name} is live for bidding.`);
   };
 
+  const cancelReshowPlayer = () => {
+    if (!hiddenPlayer) return;
+    const playerName = hiddenPlayer.name;
+    stopAudio(auctionAudioRef);
+    setHiddenPlayer(null);
+    setSelectedNumber(null);
+    setHighlightedNumber(null);
+    setBidData({ teamId: '', amount: '' });
+    setFeedback(`${playerName} was dismissed. You can select another player.`);
+  };
+
   const openMvpPlayer = (player) => {
     if (currentPlayer || hiddenPlayer) return;
     setCurrentPlayer(player);
@@ -881,9 +892,12 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
 
         {!players.length ? <div className="empty-state"><h3>No players available</h3><p>Add players to begin this category.</p></div> : null}
         {hiddenPlayer ? (
-          <button className="reshow-player-button" type="button" onClick={reshowPlayerCard}>
-            {mvpMode ? `Reshow MVP — ${hiddenPlayer.name}` : `Reshow Player #${selectedNumber} — ${hiddenPlayer.name}`}
-          </button>
+          <div className="reshow-player-actions">
+            <button className="reshow-player-button" type="button" onClick={reshowPlayerCard}>
+              {mvpMode ? `Reshow MVP — ${hiddenPlayer.name}` : `Reshow Player #${selectedNumber} — ${hiddenPlayer.name}`}
+            </button>
+            <button className="cancel-reshow-button" type="button" onClick={cancelReshowPlayer}>Cancel</button>
+          </div>
         ) : null}
         {feedback ? <p className="feedback">{feedback}</p> : null}
       </section>
