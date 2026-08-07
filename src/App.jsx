@@ -3,8 +3,10 @@ import { Link, Navigate, Route, Routes, useLocation, useParams } from 'react-rou
 import {
   MatchDetailsPage,
   MatchesPage,
+  LeaderboardPage,
   RegistrationLiveMatches,
   ScorerDashboardPage,
+  ScorerLeaderboardPage,
   ScorerMatchPage,
   clearScorerSessionToken
 } from './Scoring';
@@ -1283,7 +1285,7 @@ function App() {
     ? location.pathname.replace(/\/+$/, '')
     : location.pathname;
   const isStandaloneRegistrationRoute = normalizedPath === '/register' || normalizedPath === '/register-form';
-  const isScoringOnlyRoute = /^\/(?:matches|scorer)(?:\/|$)/.test(normalizedPath);
+  const isScoringOnlyRoute = /^\/(?:matches|scorer|leaderboard)(?:\/|$)/.test(normalizedPath);
   const isStandaloneRoute = isStandaloneRegistrationRoute || isScoringOnlyRoute;
   const shouldLoadAuctionData = !isStandaloneRoute && normalizedPath !== '/';
   const cachedBootstrap = useMemo(() => {
@@ -1827,8 +1829,10 @@ function App() {
         <Route path="/register" element={<RegistrationPage onRegistered={loadPublicRegistrationSummary} logo={settings.logo} registeredCount={publicRegistrationCount} />} />
         <Route path="/register-form" element={<RegistrationPage onRegistered={loadPublicRegistrationSummary} logo={settings.logo} registeredCount={publicRegistrationCount} />} />
         <Route path="/matches" element={<MatchesPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
+        <Route path="/leaderboard" element={<LeaderboardPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
         <Route path="/matches/:matchId" element={<MatchDetailsPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
         <Route path="/scorer" element={<ScorerDashboardPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
+        <Route path="/scorer/leaderboard" element={<ScorerLeaderboardPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
         <Route path="/scorer/:matchId" element={<ScorerMatchPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
         <Route path="/registration-data" element={<RegistrationDataPage />} />
         <Route path="/approvals" element={<main className="panel approvals-page"><div className="page-heading"><div><span className="eyebrow">APPROVAL PANEL</span><h2>Pending registrations</h2><p>Review player signups and approve them for auction.</p></div><Link className="back-link" to="/auction">Back to auction</Link></div><section className="pending-registrations-panel"><div className="pending-registrations-header"><div><span className="eyebrow">PENDING</span><h3>Player approvals</h3></div><span className="pending-count-badge">{pendingRegistrations.length}</span></div>{pendingRegistrations.length ? <div className="pending-registrations-list">{pendingRegistrations.map((player) => <article className="pending-registration-card" key={player._id}><div className="pending-registration-main"><h4>{player.name}</h4><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Phone:</strong> {player.phone || '—'}</p><p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p><p><strong>T-Shirt name:</strong> {player.tshirtName || '—'}</p>{player.cricheroesId ? <p><strong>CricHeroes:</strong> <a href={`https://cricheroes.com/player-profile/${player.cricheroesId}/player/profile`} target="_blank" rel="noreferrer">Open player profile</a></p> : null}{player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}{player.previouslyPlayedIn || player.playedIn ? <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn}</p> : null}{player.details ? <p>{player.details}</p> : null}{player.paymentReceipt ? <p><a href={resolveAssetUrl(player.paymentReceipt)} target="_blank" rel="noreferrer">View payment receipt</a></p> : null}</div><button type="button" onClick={() => approveRegistration(player)}>Approve</button></article>)}</div> : <p className="pending-empty">No pending registrations right now.</p>}</section>{feedback ? <p className="feedback">{feedback}</p> : null}</main>} />
