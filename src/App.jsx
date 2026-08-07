@@ -110,7 +110,7 @@ function PlayersPage({ refreshData }) {
     return matchesCategory && matchesSearch;
   });
   return <main className="panel">
-    <div className="page-heading"><div><span className="eyebrow">PLAYER DATABASE</span><h2>Players</h2></div><div className="page-heading-actions"><button onClick={() => { setEditing(null); setPlayerImagePreview(''); setShowForm(!showForm); }}>{showForm ? 'Close Form' : 'Add Player'}</button><Link className="back-link" to="/">Back</Link></div></div>
+    <div className="page-heading"><div><span className="eyebrow">PLAYER DATABASE</span><h2>Players</h2></div><div className="page-heading-actions"><button onClick={() => { setEditing(null); setPlayerImagePreview(''); setShowForm(!showForm); }}>{showForm ? 'Close Form' : 'Add Player'}</button><Link className="back-link" to="/auction">Back</Link></div></div>
     {showForm || editing ? <form className="manual-player-form player-editor form-reveal" onSubmit={save} key={editing?._id || 'new'}>
       <div className="full-field player-form-image-preview">{playerImagePreview ? <img src={resolveAssetUrl(playerImagePreview)} alt="Player preview" /> : <div><span>Image Preview</span><small>Upload an image or enter an image URL</small></div>}</div>
       <label>Name<input name="name" defaultValue={editing?.name || ''} required /></label>
@@ -164,7 +164,7 @@ function WelcomeVideoPage({ settings, refreshData }) {
   };
 
   return <main className="panel welcome-video-page">
-    <div className="page-heading"><div><span className="eyebrow">WELCOME MEDIA</span><h2>Welcome Video</h2><p>Upload and preview the video used to welcome auction viewers.</p></div><Link className="back-link" to="/">Back to auction</Link></div>
+    <div className="page-heading"><div><span className="eyebrow">WELCOME MEDIA</span><h2>Welcome Video</h2><p>Upload and preview the video used to welcome auction viewers.</p></div><Link className="back-link" to="/auction">Back to auction</Link></div>
     <div className="welcome-video-layout">
       <section className="welcome-video-preview">
         {videoPreview ? <video src={resolveAssetUrl(videoPreview)} controls playsInline /> : <div><strong>No welcome video uploaded</strong><span>Select a video file to preview it here.</span></div>}
@@ -201,7 +201,7 @@ function TestimonialsPage() {
     if (response.ok) await loadItems();
   };
   return <main className="panel testimonials-page">
-    <div className="page-heading"><div><span className="eyebrow">RMPL HISTORY</span><h2>Previous Events & Winners</h2><p>Celebrate past events, moments, and champions.</p></div><div className="page-heading-actions"><button onClick={() => setShowForm(!showForm)}>{showForm ? 'Close Form' : 'Add Previous Event'}</button><Link className="back-link" to="/">Back</Link></div></div>
+    <div className="page-heading"><div><span className="eyebrow">RMPL HISTORY</span><h2>Previous Events & Winners</h2><p>Celebrate past events, moments, and champions.</p></div><div className="page-heading-actions"><button onClick={() => setShowForm(!showForm)}>{showForm ? 'Close Form' : 'Add Previous Event'}</button><Link className="back-link" to="/auction">Back</Link></div></div>
     {showForm ? <form className="testimonial-form form-reveal" onSubmit={saveItem}>
       <label>Event Title<input name="title" required /></label><label>Event Date<input name="eventDate" type="date" /></label>
       <label className="full-field">Event Details<textarea name="description" rows="4" required /></label>
@@ -381,7 +381,7 @@ function UnsoldPlayersPage({ teams, refreshData, settings }) {
     setCelebration({ player: selling, team, amount: sale.amount }); setSelling(null); await Promise.all([load(), refreshData()]);
     setTimeout(() => { if (audio) audio.pause(); setCelebration(null); }, SOLD_SOUND_DURATION_MS);
   };
-  return <main className="panel"><div className="page-heading"><div><span className="eyebrow">AUCTION HOLDING AREA</span><h2>Unsold Players</h2></div><Link className="back-link" to="/">Back</Link></div><div className="all-players-grid">{players.map((player) => <article className="database-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span className="result-status unsold">UNSOLD</span><h3>#{player.auctionNumber} · {player.name}</h3><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Base Price:</strong> {Number(player.amount || 0).toLocaleString()} Points</p><div className="management-actions"><button onClick={() => { setSelling(player); setSale({ teamId: '', amount: player.amount || '' }); }}>Sell Player</button><button className="ghost" onClick={() => restore(player)}>Return to Auction</button></div></div></article>)}</div>
+  return <main className="panel"><div className="page-heading"><div><span className="eyebrow">AUCTION HOLDING AREA</span><h2>Unsold Players</h2></div><Link className="back-link" to="/auction">Back</Link></div><div className="all-players-grid">{players.map((player) => <article className="database-player-card" key={player._id}><img src={resolveAssetUrl(player.image)} alt={player.name} /><div><span className="result-status unsold">UNSOLD</span><h3>#{player.auctionNumber} · {player.name}</h3><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Base Price:</strong> {Number(player.amount || 0).toLocaleString()} Points</p><div className="management-actions"><button onClick={() => { setSelling(player); setSale({ teamId: '', amount: player.amount || '' }); }}>Sell Player</button><button className="ghost" onClick={() => restore(player)}>Return to Auction</button></div></div></article>)}</div>
     {selling ? <div className="player-modal-backdrop">{settings.logo ? <img className="player-modal-logo" src={settings.logo} alt="" /> : null}<form className="panel selected-player-card player-reveal" onSubmit={sell}><button className="modal-close" type="button" onClick={() => setSelling(null)}>×</button><div className="selected-number-badge">#{selling.auctionNumber}</div><div className="player-image-wrap"><img src={selling.image} alt={selling.name} /></div><div className="player-card-details"><span className="unsold-live-badge">UNSOLD PLAYER</span><h2>{selling.name}</h2><p><strong>Age:</strong> {selling.age || '—'}</p><p>{selling.details}</p><strong className="starting-bid">Base Price: {Number(selling.amount || 0).toLocaleString()} Points</strong><div className="bid-form"><select required value={sale.teamId} onChange={(event) => setSale({ ...sale, teamId: event.target.value })}><option value="">Select team</option>{teams.map((team) => <option value={team._id} key={team._id}>{team.name} — {Number(team.remainingPurse).toLocaleString()} Points</option>)}</select><input required type="number" value={sale.amount} onChange={(event) => setSale({ ...sale, amount: event.target.value })} /><button>Confirm Sold</button></div></div></form></div> : null}
     {celebration ? <div className="player-modal-backdrop"><div className="sold-celebration">{celebration.team?.logo ? <img className="sold-team-backdrop" src={resolveAssetUrl(celebration.team.logo)} alt="" /> : null}<span className="sold-title">SOLD!</span><h2>{celebration.player.name}</h2><p>sold to</p><h1>{celebration.team?.name}</h1><strong>{Number(celebration.amount).toLocaleString()} Points</strong></div></div> : null}
   </main>;
@@ -423,7 +423,7 @@ function TeamsPage({ teams, refreshData }) {
         <div><span className="eyebrow">TEAM MANAGEMENT</span><h2>Teams</h2><p>Add teams, logos, and opening purse values.</p></div>
         <div className="page-heading-actions">
           <button type="button" onClick={() => { setEditingTeam(null); setShowTeamForm((visible) => !visible); }}>{showTeamForm && !editingTeam ? 'Close Form' : 'Add Team'}</button>
-          <Link className="back-link" to="/">Back to auction</Link>
+          <Link className="back-link" to="/auction">Back to auction</Link>
         </div>
       </div>
       {showTeamForm || editingTeam ? <form className="team-form form-reveal" onSubmit={saveTeam} key={editingTeam?._id || 'new'}>
@@ -459,7 +459,7 @@ function PurseValuePage({ teams }) {
     <main className="panel">
       <div className="page-heading">
         <div><span className="eyebrow">LIVE FINANCES</span><h2>Purse Value</h2><p>Team purse and player purchase statistics.</p></div>
-        <Link className="back-link" to="/">Back to auction</Link>
+        <Link className="back-link" to="/auction">Back to auction</Link>
       </div>
       <div className="purse-stats-grid">
         {teams.map((team) => (
@@ -567,7 +567,7 @@ function SelectedPlayersPage({ refreshCategories, teams }) {
           <h2>Selected Players & Management</h2>
           <p>Only sold players appear here. Mark one unsold to return them to the auction.</p>
         </div>
-        <Link className="back-link" to="/">Back to categories</Link>
+        <Link className="back-link" to="/auction">Back to categories</Link>
       </div>
       {feedback ? <p className="feedback">{feedback}</p> : null}
       <label className="team-filter">
@@ -655,12 +655,12 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
   const auctionAudioRef = useRef(null);
   const soldAudioRef = useRef(null);
   const soldTimerRef = useRef(null);
-  const minimumAvailableBasePrice = useMemo(() => {
-    const prices = categories.flatMap((item) => item.players || [])
+  const availableBasePrices = useMemo(() => {
+    return categories.flatMap((item) => item.players || [])
       .filter((player) => player._id !== currentPlayer?._id)
       .map((player) => Number(player.amount || 0))
-      .filter((amount) => amount > 0);
-    return prices.length ? Math.min(...prices) : 0;
+      .filter((amount) => amount > 0)
+      .sort((left, right) => left - right);
   }, [categories, currentPlayer?._id]);
   const teamBidDetails = useMemo(() => teams.map((team) => {
     const purse = Number(team.purse || 0);
@@ -668,9 +668,11 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
     const remaining = Number(team.remainingPurse || 0);
     const bought = Number(team.playerCount || 0);
     const slotsLeft = playerLimitEnabled && maxPlayersPerTeam > 0 ? Math.max(0, maxPlayersPerTeam - bought) : null;
-    const reserve = slotsLeft === null ? 0 : Math.max(0, slotsLeft - 1) * minimumAvailableBasePrice;
-    return { ...team, purse, spent, remaining, bought, slotsLeft, maxBid: Math.max(0, remaining - reserve), spentPercent: purse > 0 ? Math.min(100, (spent / purse) * 100) : 0 };
-  }), [teams, playerLimitEnabled, maxPlayersPerTeam, minimumAvailableBasePrice]);
+    const reserve = slotsLeft === null ? 0 : availableBasePrices
+      .slice(0, Math.max(0, slotsLeft - 1))
+      .reduce((total, price) => total + price, 0);
+    return { ...team, purse, spent, remaining, bought, slotsLeft, reserve, maxBid: Math.max(0, remaining - reserve), spentPercent: purse > 0 ? Math.min(100, (spent / purse) * 100) : 0 };
+  }), [teams, playerLimitEnabled, maxPlayersPerTeam, availableBasePrices]);
   const selectedTeamBid = teamBidDetails.find((team) => team._id === bidData.teamId);
 
   const stopAudio = (audioRef) => {
@@ -828,7 +830,7 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
   };
 
   if (!category && categories.length) {
-    return <main className="panel"><h2>Category not found</h2><Link to="/">Back to categories</Link></main>;
+    return <main className="panel"><h2>Category not found</h2><Link to="/auction">Back to categories</Link></main>;
   }
 
   return (
@@ -840,7 +842,7 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
             <h2>{categoryLabels[categoryKey] || 'Players'}</h2>
             <p>{directCardMode ? `${players.length} players available. Select a player card to begin bidding.` : `${players.length} players available. Each number represents one player.`}</p>
           </div>
-          <Link className="back-link" to="/">Back to categories</Link>
+          <Link className="back-link" to="/auction">Back to categories</Link>
         </div>
 
         {directCardMode ? (
@@ -929,7 +931,8 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
                     <strong>{team.remaining.toLocaleString()}</strong>
                   </div>
                   <div className="auction-expense-track"><i style={{ width: `${team.spentPercent}%` }} /></div>
-                  <div className="auction-team-meta"><span>Spent {team.spent.toLocaleString()}</span><span>Limit {team.maxBid.toLocaleString()}</span></div>
+                  <div className="auction-team-meta"><span>Spent {team.spent.toLocaleString()}</span><span>Reserved {team.reserve.toLocaleString()}</span></div>
+                  <div className="auction-safe-limit"><span>Safe bid limit</span><strong>{team.maxBid.toLocaleString()} Points</strong></div>
                 </button>
               ))}
             </aside>
@@ -1074,6 +1077,7 @@ function RegistrationPage({ onRegistered, registeredCount, logo }) {
         <label>T-Shirt Size*
           <input name="tshirtSize" type="number" inputMode="numeric" min="1" step="1" placeholder=" Size (e.g. 40)" required />
         </label>
+        <label>Name on T-Shirt*<input name="tshirtName" maxLength="30" placeholder=" Name to print on jersey" required /></label>
 
         <fieldset className="full-field role-fieldset">
           <legend>Select Role*</legend>
@@ -1176,6 +1180,7 @@ function RegistrationDataPage() {
       player.age,
       player.phone,
       player.tshirtSize,
+      player.tshirtName,
       player.registrationStatus,
       player.previouslyPlayedIn,
       player.playedIn,
@@ -1191,7 +1196,7 @@ function RegistrationDataPage() {
           <h2>Player Registration Data</h2>
           <p>View submitted player photos, details, and payment receipts.</p>
         </div>
-        <Link className="back-link" to="/">Back to auction</Link>
+        <Link className="back-link" to="/auction">Back to auction</Link>
       </div>
       <div className="registration-data-summary">
         <strong>{registrations.length}</strong>
@@ -1225,6 +1230,7 @@ function RegistrationDataPage() {
                   <p><strong>Age:</strong> {player.age || '—'}</p>
                   <p><strong>Phone:</strong> {player.phone || '—'}</p>
                   <p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p>
+                  <p><strong>T-Shirt name:</strong> {player.tshirtName || '—'}</p>
                   <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn || 'New player'}</p>
                   {player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}
                 </div>
@@ -1807,7 +1813,7 @@ function App() {
         <Route path="/scorer" element={<ScorerDashboardPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
         <Route path="/scorer/:matchId" element={<ScorerMatchPage logo={settings.logo} backgroundImage={settings.backgroundImage} />} />
         <Route path="/registration-data" element={<RegistrationDataPage />} />
-        <Route path="/approvals" element={<main className="panel approvals-page"><div className="page-heading"><div><span className="eyebrow">APPROVAL PANEL</span><h2>Pending registrations</h2><p>Review player signups and approve them for auction.</p></div><Link className="back-link" to="/">Back to auction</Link></div><section className="pending-registrations-panel"><div className="pending-registrations-header"><div><span className="eyebrow">PENDING</span><h3>Player approvals</h3></div><span className="pending-count-badge">{pendingRegistrations.length}</span></div>{pendingRegistrations.length ? <div className="pending-registrations-list">{pendingRegistrations.map((player) => <article className="pending-registration-card" key={player._id}><div className="pending-registration-main"><h4>{player.name}</h4><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Phone:</strong> {player.phone || '—'}</p><p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p>{player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}{player.previouslyPlayedIn || player.playedIn ? <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn}</p> : null}{player.details ? <p>{player.details}</p> : null}{player.paymentReceipt ? <p><a href={resolveAssetUrl(player.paymentReceipt)} target="_blank" rel="noreferrer">View payment receipt</a></p> : null}</div><button type="button" onClick={() => approveRegistration(player)}>Approve</button></article>)}</div> : <p className="pending-empty">No pending registrations right now.</p>}</section>{feedback ? <p className="feedback">{feedback}</p> : null}</main>} />
+        <Route path="/approvals" element={<main className="panel approvals-page"><div className="page-heading"><div><span className="eyebrow">APPROVAL PANEL</span><h2>Pending registrations</h2><p>Review player signups and approve them for auction.</p></div><Link className="back-link" to="/auction">Back to auction</Link></div><section className="pending-registrations-panel"><div className="pending-registrations-header"><div><span className="eyebrow">PENDING</span><h3>Player approvals</h3></div><span className="pending-count-badge">{pendingRegistrations.length}</span></div>{pendingRegistrations.length ? <div className="pending-registrations-list">{pendingRegistrations.map((player) => <article className="pending-registration-card" key={player._id}><div className="pending-registration-main"><h4>{player.name}</h4><p><strong>Age:</strong> {player.age || '—'}</p><p><strong>Phone:</strong> {player.phone || '—'}</p><p><strong>T-Shirt size:</strong> {player.tshirtSize || '—'}</p><p><strong>T-Shirt name:</strong> {player.tshirtName || '—'}</p>{player.registrationRoles?.length ? <p><strong>Roles:</strong> {player.registrationRoles.join(', ')}</p> : null}{player.previouslyPlayedIn || player.playedIn ? <p><strong>Previously played:</strong> {player.previouslyPlayedIn || player.playedIn}</p> : null}{player.details ? <p>{player.details}</p> : null}{player.paymentReceipt ? <p><a href={resolveAssetUrl(player.paymentReceipt)} target="_blank" rel="noreferrer">View payment receipt</a></p> : null}</div><button type="button" onClick={() => approveRegistration(player)}>Approve</button></article>)}</div> : <p className="pending-empty">No pending registrations right now.</p>}</section>{feedback ? <p className="feedback">{feedback}</p> : null}</main>} />
         <Route path="/category/:categoryKey" element={<CategoryAuctionPage categories={categories} refreshCategories={loadData} teams={teams} auctionStartAudio={settings.auctionStartAudio} playerSoldAudio={settings.playerSoldAudio} auctionLogo={settings.logo} playerLimitEnabled={settings.playerLimitEnabled} maxPlayersPerTeam={Number(settings.maxPlayersPerTeam || 0)} cardSelectionEnabled={settings.auctionCardSelectionEnabled} />} />
         <Route path="/mvp" element={<CategoryAuctionPage categories={categories} refreshCategories={loadData} teams={teams} auctionStartAudio={settings.auctionStartAudio} playerSoldAudio={settings.playerSoldAudio} auctionLogo={settings.logo} playerLimitEnabled={settings.playerLimitEnabled} maxPlayersPerTeam={Number(settings.maxPlayersPerTeam || 0)} fixedCategoryKey="mvp" mvpMode />} />
         <Route path="/selected" element={<SelectedPlayersPage refreshCategories={loadData} teams={teams} />} />
@@ -1825,7 +1831,7 @@ function App() {
           <main className="panel settings-page">
             <div className="page-heading">
               <div><span className="eyebrow">SYSTEM CONFIGURATION</span><h2>Settings</h2><p>Manage dashboard branding, sounds, and category artwork.</p></div>
-              <Link className="back-link" to="/">Back to auction</Link>
+              <Link className="back-link" to="/auction">Back to auction</Link>
             </div>
             <form className="settings-form" onSubmit={updateSettings}>
               <section className="settings-section">
