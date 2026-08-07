@@ -655,6 +655,23 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
   const auctionAudioRef = useRef(null);
   const soldAudioRef = useRef(null);
   const soldTimerRef = useRef(null);
+  const minimumAvailableBasePrice = useMemo(() => {
+    const prices = categories.flatMap((item) => item.players || [])
+      .filter((player) => player._id !== currentPlayer?._id)
+      .map((player) => Number(player.amount || 0))
+      .filter((amount) => amount > 0);
+    return prices.length ? Math.min(...prices) : 0;
+  }, [categories, currentPlayer?._id]);
+  const teamBidDetails = useMemo(() => teams.map((team) => {
+    const purse = Number(team.purse || 0);
+    const spent = Number(team.spent || 0);
+    const remaining = Number(team.remainingPurse || 0);
+    const bought = Number(team.playerCount || 0);
+    const slotsLeft = playerLimitEnabled && maxPlayersPerTeam > 0 ? Math.max(0, maxPlayersPerTeam - bought) : null;
+    const reserve = slotsLeft === null ? 0 : Math.max(0, slotsLeft - 1) * minimumAvailableBasePrice;
+    return { ...team, purse, spent, remaining, bought, slotsLeft, maxBid: Math.max(0, remaining - reserve), spentPercent: purse > 0 ? Math.min(100, (spent / purse) * 100) : 0 };
+  }), [teams, playerLimitEnabled, maxPlayersPerTeam, minimumAvailableBasePrice]);
+  const selectedTeamBid = teamBidDetails.find((team) => team._id === bidData.teamId);
 
   const stopAudio = (audioRef) => {
     if (!audioRef.current) return;
@@ -716,6 +733,10 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
   const saveCategoryBid = async (sold) => {
     if (sold && !bidData.teamId) {
       setFeedback('Select a team before marking the player as sold.');
+      return;
+    }
+    if (sold && selectedTeamBid && Number(bidData.amount || 0) > selectedTeamBid.maxBid) {
+      setFeedback(`Maximum safe bid for ${selectedTeamBid.name} is ${selectedTeamBid.maxBid.toLocaleString()} Points.`);
       return;
     }
 
@@ -828,7 +849,7 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
               const previousTeam = player.previouslyPlayedIn || player.playedIn || '';
               return (
                 <button className={`mvp-player-card ${mvpMode ? 'premium' : 'standard'}`} type="button" key={player._id} onClick={() => openMvpPlayer(player)} disabled={Boolean(currentPlayer) || Boolean(hiddenPlayer)}>
-                  <img src={resolveAssetUrl(player.image || 'https://via.placeholder.com/300')} alt={player.name} />
+                  <img src={resolveAssetUrl(player.image || 'https://via.placeholder.com/300')} alt={player.name} loading="lazy" decoding="async" />
                   <div>
                     <span>{mvpMode ? '★ MVP' : categoryLabels[player.category]}</span>
                     <h3>{player.name}</h3>
@@ -866,7 +887,7 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
 
       {currentPlayer ? (
         <div className="player-modal-backdrop" role="dialog" aria-modal="true" aria-label={`Selected player ${currentPlayer.name}`}>
-          <section className="panel selected-player-card player-reveal">
+          <section className="panel selected-player-card player-reveal with-team-finances">
             {auctionLogo ? <img className="auction-card-logo" src={resolveAssetUrl(auctionLogo)} alt="RMPL logo" /> : null}
             <button className="modal-close" type="button" onClick={closePlayerCard} aria-label="Close player card">×</button>
             {!mvpMode ? <div className="selected-number-badge">#{selectedNumber}</div> : null}
@@ -885,18 +906,33 @@ function CategoryAuctionPage({ categories, refreshCategories, teams, auctionStar
               <div className="bid-form">
                 <select value={bidData.teamId} onChange={(event) => setBidData({ ...bidData, teamId: event.target.value })}>
                   <option value="">Select team</option>
-                  {teams.map((team) => {
-                    const biddingClosed = playerLimitEnabled && maxPlayersPerTeam > 0 && Number(team.playerCount || 0) >= maxPlayersPerTeam;
-                    return <option key={team._id} value={team._id} disabled={biddingClosed}>{team.name} — {biddingClosed ? 'BIDDING CLOSED' : `${Number(team.remainingPurse || 0).toLocaleString()} Points left`}</option>;
+                  {teamBidDetails.map((team) => {
+                    const biddingClosed = team.slotsLeft === 0;
+                    return <option key={team._id} value={team._id} disabled={biddingClosed}>{team.name} — {biddingClosed ? 'BIDDING CLOSED' : `${team.remaining.toLocaleString()} Points left`}</option>;
                   })}
                 </select>
-                <input type="number" value={bidData.amount} onChange={(event) => setBidData({ ...bidData, amount: event.target.value })} placeholder="Final bid amount" />
+                <input type="number" min="0" max={selectedTeamBid?.maxBid} value={bidData.amount} onChange={(event) => setBidData({ ...bidData, amount: event.target.value })} placeholder="Final bid amount" />
+                {selectedTeamBid ? <p className="bid-limit-note">Safe bid limit: <strong>{selectedTeamBid.maxBid.toLocaleString()} Points</strong>{selectedTeamBid.slotsLeft !== null ? ` · ${selectedTeamBid.slotsLeft} squad slots left` : ''}</p> : null}
                 <div className="bid-actions">
                   <button onClick={() => saveCategoryBid(true)}>Sold</button>
                   <button className="ghost" onClick={() => saveCategoryBid(false)}>Unsold</button>
                 </div>
               </div>
             </div>
+            <aside className="auction-team-finances" aria-label="Team purse balances">
+              <div className="auction-team-finances-heading"><strong>Team balances</strong><span>Live purse & expenses</span></div>
+              {teamBidDetails.map((team) => (
+                <button type="button" className={`auction-team-balance ${bidData.teamId === team._id ? 'selected' : ''}`} key={team._id} onClick={() => team.slotsLeft !== 0 && setBidData({ ...bidData, teamId: team._id })} disabled={team.slotsLeft === 0}>
+                  <div className="auction-team-row">
+                    {team.logo ? <img src={resolveAssetUrl(team.logo)} alt="" /> : <span className="small-team-logo">{team.name.charAt(0)}</span>}
+                    <span><strong>{team.name}</strong><small>{team.bought} bought{team.slotsLeft !== null ? ` · ${team.slotsLeft} left` : ''}</small></span>
+                    <strong>{team.remaining.toLocaleString()}</strong>
+                  </div>
+                  <div className="auction-expense-track"><i style={{ width: `${team.spentPercent}%` }} /></div>
+                  <div className="auction-team-meta"><span>Spent {team.spent.toLocaleString()}</span><span>Limit {team.maxBid.toLocaleString()}</span></div>
+                </button>
+              ))}
+            </aside>
           </section>
           {soldCelebration ? (
             <div className={`sold-celebration ${mvpMode ? 'mvp-sold-celebration' : ''}`}>
@@ -1226,14 +1262,20 @@ function App() {
   const isScoringOnlyRoute = /^\/(?:matches|scorer)(?:\/|$)/.test(normalizedPath);
   const isStandaloneRoute = isStandaloneRegistrationRoute || isScoringOnlyRoute;
   const shouldLoadAuctionData = !isStandaloneRoute && normalizedPath !== '/';
-  const [categories, setCategories] = useState([]);
-  const [settings, setSettings] = useState({ backgroundImage: '', logo: '', auctionStartAudio: '', playerSoldAudio: '' });
+  const cachedBootstrap = useMemo(() => {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem('rmpl-auction-bootstrap') || 'null');
+      return cached && Date.now() - Number(cached.cachedAt || 0) < 30 * 60 * 1000 ? cached : null;
+    } catch { return null; }
+  }, []);
+  const [categories, setCategories] = useState(cachedBootstrap?.categories || []);
+  const [settings, setSettings] = useState(cachedBootstrap?.settings || { backgroundImage: '', logo: '', auctionStartAudio: '', playerSoldAudio: '' });
   const [publicRegistrationCount, setPublicRegistrationCount] = useState(0);
-  const [playerLimitEnabled, setPlayerLimitEnabled] = useState(false);
-  const [auctionCardSelectionEnabled, setAuctionCardSelectionEnabled] = useState(false);
-  const [teams, setTeams] = useState([]);
+  const [playerLimitEnabled, setPlayerLimitEnabled] = useState(Boolean(cachedBootstrap?.settings?.playerLimitEnabled));
+  const [auctionCardSelectionEnabled, setAuctionCardSelectionEnabled] = useState(Boolean(cachedBootstrap?.settings?.auctionCardSelectionEnabled));
+  const [teams, setTeams] = useState(cachedBootstrap?.teams || []);
   const [selectedCategory, setSelectedCategory] = useState('allrounder');
-  const [pendingRegistrations, setPendingRegistrations] = useState([]);
+  const [pendingRegistrations, setPendingRegistrations] = useState(cachedBootstrap?.pendingRegistrations || []);
   const [currentPlayer, setCurrentPlayer] = useState(null);
   const [bidData, setBidData] = useState({ team: '', amount: '' });
   const [status, setStatus] = useState('ready');
@@ -1246,7 +1288,7 @@ function App() {
   const [settingsFeedback, setSettingsFeedback] = useState('');
   const [scorerPasswordFeedback, setScorerPasswordFeedback] = useState('');
   const [changingScorerPassword, setChangingScorerPassword] = useState(false);
-  const [routeLoading, setRouteLoading] = useState(true);
+  const [routeLoading, setRouteLoading] = useState(!cachedBootstrap);
   const backendVersionRef = useRef(null);
   const auctionVersionRef = useRef(null);
   const loadDataPromiseRef = useRef(null);
@@ -1300,6 +1342,14 @@ function App() {
       setAuctionCardSelectionEnabled(Boolean(nextSettings.auctionCardSelectionEnabled));
       setTeams(data.teams || []);
       setPendingRegistrations(data.pendingRegistrations || []);
+      try {
+        sessionStorage.setItem('rmpl-auction-bootstrap', JSON.stringify({
+          ...data,
+          cachedAt: Date.now()
+        }));
+      } catch {
+        // Storage can be unavailable or full; live data still remains usable.
+      }
 
       const nextVersion = Number(data.version);
       if (Number.isFinite(nextVersion)) {
@@ -1366,7 +1416,7 @@ function App() {
       return () => { active = false; };
     }
 
-    setRouteLoading(true);
+    setRouteLoading(!cachedBootstrap);
     loadData(false).finally(() => {
       if (active) setRouteLoading(false);
     });
@@ -1727,7 +1777,7 @@ function App() {
                   <Link key={item.key} to={item.key === 'mvp' ? '/mvp' : `/category/${item.key}`} className={`cat-card ${item.key === 'mvp' ? 'mvp-category-card' : ''}`} onClick={() => setSelectedCategory(item.key)}>
                     <div className="category-image-wrap">
                       {settings.categoryImages?.[item.key] || item.players?.[0]?.image
-                        ? <img src={resolveAssetUrl(settings.categoryImages?.[item.key] || item.players[0].image)} alt={`${item.label} category`} />
+                        ? <img src={resolveAssetUrl(settings.categoryImages?.[item.key] || item.players[0].image)} alt={`${item.label} category`} loading="lazy" decoding="async" />
                         : <div className="category-image-placeholder">{item.label.charAt(0)}</div>}
                     </div>
                     <div className="category-card-content">
