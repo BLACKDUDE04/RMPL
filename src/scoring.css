@@ -3634,8 +3634,61 @@
 
   .match-leaderboard-table-wrap {
     max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: hidden;
+  }
+
+  .match-leaderboard table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .match-leaderboard th,
+  .match-leaderboard td {
+    min-width: 0;
+    padding: 9px 3px;
+    font-size: 0.7rem;
+  }
+
+  .match-leaderboard th:first-child,
+  .match-leaderboard td:first-child {
+    width: 9%;
+  }
+
+  .match-leaderboard th:nth-child(2),
+  .match-leaderboard td:nth-child(2) {
+    width: 36%;
+  }
+
+  .match-leaderboard th:nth-child(n + 3),
+  .match-leaderboard td:nth-child(n + 3) {
+    width: 11%;
+  }
+
+  .leaderboard-team {
+    width: 100%;
+    gap: 5px;
+    white-space: normal;
+  }
+
+  .leaderboard-team strong {
+    min-width: 0;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .leaderboard-team .cricket-team-mark.small,
+  .leaderboard-team .cricket-team-fallback.small {
+    width: 27px;
+    height: 27px;
+    flex: 0 0 27px;
+  }
+
+  .leaderboard-rank {
+    width: 24px;
+    height: 24px;
+    font-size: 0.68rem;
   }
 
   .participant-selectors select,
