@@ -915,6 +915,37 @@ nav a:hover {
   max-width: none;
 }
 
+.selected-player-card.with-team-finances {
+  grid-template-columns: minmax(260px, .9fr) minmax(280px, .9fr) minmax(280px, .75fr);
+  gap: clamp(18px, 2.5vw, 34px);
+  padding-inline: clamp(24px, 3vw, 52px);
+}
+
+.auction-team-finances {
+  align-self: stretch;
+  max-height: 84dvh;
+  overflow-y: auto;
+  padding: 14px;
+  background: rgba(2, 6, 23, .74);
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 18px;
+}
+
+.auction-team-finances-heading { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.auction-team-finances-heading span { color: #94a3b8; font-size: .78rem; }
+.auction-team-balance { display: block; width: 100%; margin: 0 0 8px; padding: 10px; color: #e2e8f0; background: rgba(30, 41, 59, .8); border: 1px solid transparent; text-align: left; }
+.auction-team-balance.selected { border-color: #fbbf24; box-shadow: 0 0 0 1px rgba(251, 191, 36, .25); }
+.auction-team-balance:disabled { opacity: .48; cursor: not-allowed; }
+.auction-team-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 9px; }
+.auction-team-row img, .auction-team-row .small-team-logo { width: 34px; height: 34px; object-fit: contain; border-radius: 50%; }
+.auction-team-row > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
+.auction-team-row small { color: #94a3b8; font-size: .7rem; }
+.auction-team-row > strong { color: #86efac; font-size: .82rem; }
+.auction-expense-track { height: 6px; overflow: hidden; margin-top: 9px; background: #334155; border-radius: 99px; }
+.auction-expense-track i { display: block; height: 100%; background: linear-gradient(90deg, #22c55e, #f59e0b, #ef4444); border-radius: inherit; }
+.auction-team-meta { display: flex; justify-content: space-between; margin-top: 5px; color: #94a3b8; font-size: .66rem; }
+.bid-limit-note { width: 100%; margin: 0; color: #bfdbfe; font-size: .82rem; }
+
 .selected-number-badge {
   position: absolute;
   top: -14px;
@@ -3133,6 +3164,15 @@ button {
     padding: 44px 16px 12px;
     text-align: center;
   }
+
+  .selected-player-card.with-team-finances {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 34dvh) auto auto;
+    overflow-y: auto;
+  }
+
+  .selected-player-card.with-team-finances .player-card-details { overflow: visible; }
+  .auction-team-finances { width: 100%; max-height: none; }
 
   .selected-player-card img {
     width: 100%;
